@@ -6,17 +6,23 @@
 #include <qevent.h>
 #include "SkyBox.h"
 
-static const int clientWidth = 640;
-static const int clientHeight = 480;
+static const int clientWidth = 1280;
+static const int clientHeight = 720;
+static const float clipw = 0.00001f;
 
 Renderer::Renderer(QWidget *parent)
-    : QWidget(parent), m_lastX(0), m_lastY(0), m_fov(90.f), m_interact(false)
+    : QWidget(parent), m_lastX(0), m_lastY(0), m_fov(60.f), m_interact(false), m_scene(nullptr),
+	m_sides{ { -1, 0, 0, 1 }, { 1, 0, 0, 1}, { 0, 1, 0, 1 }, { 0, -1, 0, 1 },{ 0, 0, -1, 1 },{ 0, 0, 1, 1 } }
 {
+	
   
 	setFixedWidth(clientWidth);
 	setFixedHeight(clientHeight);
 	m_frameData = new unsigned int[clientHeight * clientWidth];
 	m_zbuffer = new float[clientHeight * clientWidth];
+
+	m_sides.resize(6);
+	
 }
 
 Renderer::~Renderer()
@@ -25,6 +31,12 @@ Renderer::~Renderer()
 	delete[] m_zbuffer;
 }
 #include <qdebug.h>
+
+float Renderer::s_minX = 2.f;
+float Renderer::s_minY = 2.f;
+float Renderer::s_maxX = -2.f;
+float Renderer::s_maxY = -2.f;
+
 void Renderer::render()
 {
 	if (!m_scene)
@@ -35,12 +47,12 @@ void Renderer::render()
 	m_scene->camera.update();
 	Matrix4 matView = m_scene->camera.viewMat;
 	Matrix4 matpers = perspectiveMat(m_scene->nearPlane, m_scene->farPlane);
-	Matrix4 mat = matView * matpers;
+	Matrix4 mat = matpers * matView;
 	for (int index = 0; index < m_scene->meshes.size(); ++index)
 	{
 		Mesh& mesh = m_scene->meshes[index];
 		int faceSize = mesh.indices.size();
-		for (int i = 0; i < faceSize; ++i)
+		for (int i = 0; i < 1; ++i)
 		{
 			Vertex& v1 = mesh.vertices[mesh.indices[i].u];
 			Vector3f dir = m_scene->camera.pos - v1.pos;
@@ -71,29 +83,23 @@ void Renderer::render()
 	}
 	if (m_scene->sky)
 	{
+		m_pixels.clear();
 		SkyBox * sky = m_scene->sky.get();
 		matView.m[0][3] = 0.f;
 		matView.m[1][3] = 0.f;
 		matView.m[2][3] = 0.f;
 
-		mat = matView * matpers;
+		mat = matpers * matView;
 
 
 		int faceSize = sky->indices.size();
-
-		for (int i = 0; i < faceSize; ++i)
+		Vector3f origin{ 0.f, 0.f, 0.f };
+		for (int i = 4; i < 8; ++i)
 		{
 			int u = sky->indices[i].u;
 			int v = sky->indices[i].v;
 			int w = sky->indices[i].w;
 			Vector3f& v1 = m_scene->sky->vertices[u];
-			Vector3f dir = m_scene->camera.pos - v1;
-			/*
-			if (dir.dot(sky->vertexNormals[u]) <= 0)
-			{
-				continue;
-			}
-			*/
 			Vector3f& v2 = m_scene->sky->vertices[v];
 			Vector3f& v3 = m_scene->sky->vertices[w];
 			Vector4f t1(v1);
@@ -102,26 +108,71 @@ void Renderer::render()
 			t1 = mat * t1;
 			t2 = mat * t2;
 			t3 = mat * t3;
-			t1 /= t1.w;
-			t2 /= t2.w;
-			t3 /= t3.w;
-			Vector2f p1{ (t1.x + 1.f) * 0.5f * clientWidth,  (1.f - t1.y) * 0.5f * clientHeight };
-			Vector2f p2{ (t2.x + 1.f) * 0.5f * clientWidth,  (1.f - t2.y) * 0.5f * clientHeight };
-			Vector2f p3{ (t3.x + 1.f) * 0.5f * clientWidth,  (1.f - t3.y) * 0.5f * clientHeight };
-			Vector3f vv1{ t1.x, t1.y, t1.z };
-			Vector3f vv2{ t2.x, t2.y, t2.z };
-			Vector3f vv3{ t3.x, t3.y, t3.z };
+			t1.z = t1.w;
+			t2.z = t2.w;
+			t3.z = t3.w;
 			
-			qDebug() << u << ":" << vv1.x << vv1.y << vv1.z;
-			qDebug() << v << ":" << vv2.x << vv2.y << vv2.z;
-			qDebug() << w << ":" << vv3.x << vv3.y << vv3.z;
+			if (checkCull(t1, t2, t3))
+			{
+				m_currentvs.clear();
+				m_currentnvs.clear();
+				m_inputvs.clear();
+				m_currentvs.push_back(v1);
+				m_currentvs.push_back(v2);
+				m_currentvs.push_back(v3);
+				std::vector<Vector4f> vs = sidesClip(t1, t2, t3);
+				std::vector<Vector4f> ts(vs);
+				for (auto& v : ts)
+				{
+					v.x /= v.w;
+					v.y /= v.w;
+					v.z /= v.w;
+				}
+				int size = vs.size() - 3 + 1;
+				for (int j = 0; j < size; ++j)
+				{
+					int vIndex1 = 0;
+					int vIndex2 = j + 1;
+					int vIndex3 = j + 2;
+
+					
+					Vector3f cv1{ m_currentnvs[vIndex1].x, m_currentnvs[vIndex1].y, m_currentnvs[vIndex1].z };
+					Vector3f cv2{ m_currentnvs[vIndex2].x, m_currentnvs[vIndex2].y, m_currentnvs[vIndex2].z };
+					Vector3f cv3{ m_currentnvs[vIndex3].x, m_currentnvs[vIndex3].y, m_currentnvs[vIndex3].z };
+
+					
+
+					
+					Vector2f cp1{ (ts[vIndex1].x + 1.f) * 0.5f * clientWidth,  (1.f - ts[vIndex1].y) * 0.5f * clientHeight };
+					Vector2f cp2{ (ts[vIndex2].x + 1.f) * 0.5f * clientWidth,  (1.f - ts[vIndex2].y) * 0.5f * clientHeight };
+					Vector2f cp3{ (ts[vIndex3].x + 1.f) * 0.5f * clientWidth,  (1.f - ts[vIndex3].y) * 0.5f * clientHeight };
+					drawSkyFragment(cv1, cp1, ts[vIndex1].w, cv2, cp2, ts[vIndex2].w, cv3, cp3, ts[vIndex3].w, sky->texture.get());
+				}
+			}
 			
+			else
+			{
+				t1 /= (t1.w);
+				t2 /= (t2.w);
+				t3 /= (t3.w);
+				Vector2f p1{ (t1.x + 1.f) * 0.5f * clientWidth,  (1.f - t1.y) * 0.5f * clientHeight };
+				Vector2f p2{ (t2.x + 1.f) * 0.5f * clientWidth,  (1.f - t2.y) * 0.5f * clientHeight };
+				Vector2f p3{ (t3.x + 1.f) * 0.5f * clientWidth,  (1.f - t3.y) * 0.5f * clientHeight };
+				drawSkyFragment(v1, p1, t1.w, v2, p2, t2.w, v3, p3, t3.w, sky->texture.get());
+			}
+			qDebug() << i << s_maxX << s_minX << s_maxY << s_minY;
+			s_maxX = -1;
+			s_minX = 1;
+			s_maxY = -1;
+			s_minY = 1;
 			
-			drawSkyFragment(vv1, p1, vv2, p2, vv3, p3, sky->texture.get());
 		}
+		
 
 
 	}
+	
+
 	update();
 
 }
@@ -146,6 +197,61 @@ void Renderer::drawTexture2D(const QString & file)
 void Renderer::setScene(Scene * scene)
 {
 	m_scene = scene;
+	
+}
+
+void Renderer::drawTriangle()
+{
+	clear();
+	int x1 = 1200; int y1 = 200;
+	int x2 = 1200; int y2 = 700;
+	int x3 = 100; int y3 = 700;
+
+	int minx = std::max(findMin(x1, x2, x3), 1);
+	int miny = std::max(findMin(y1, y2, y3), 1);
+	int maxx = std::min(findMax(x1, x2, x3), clientWidth - 1);
+	int maxy = std::min(findMax(y1, y2, y3), clientHeight - 1);
+
+	for (int y = miny; y <= maxy; ++y)
+	{
+		for (int x = minx; x <= maxx; ++x)
+		{
+			int index = clientWidth * y + x;
+
+
+
+			int dx1 = x1 - x;
+			int dy1 = y1 - y;
+			int dx2 = x2 - x;
+			int dy2 = y2 - y;
+			int dx3 = x3 - x;
+			int dy3 = y3 - y;
+
+
+			long long c1 = dx1 * dy2 - dx2 * dy1;
+			long long c2 = dx2 * dy3 - dx3 * dy2;
+			long long c3 = dx3 * dy1 - dx1 * dy3;
+
+			long long v1 = c1 * c2;
+			long long v2 = c1 * c3;
+			long long v3 = c2 * c3;
+
+
+			if ((v1 >= 0) && (v2 >= 0) && (v3 >= 0))
+			{
+				m_frameData[index] = (255 << 16) + (255 << 8) + 0;
+			}
+			else
+			{
+				if (x == maxx)
+				{
+					m_frameData[index] = (0 << 16) + (255 << 8) + 0;
+				}
+				
+			}
+		}
+	}
+	update();
 }
 
 
@@ -153,7 +259,7 @@ void Renderer::setScene(Scene * scene)
 void Renderer::paintEvent(QPaintEvent * e)
 {
 	QPainter p(this);
-	QImage image((uchar*)m_frameData, this->width(), this->height(), QImage::Format_RGB32);
+	QImage image((uchar*)m_frameData, clientWidth, clientHeight, QImage::Format_RGB32);
 	p.drawImage(0, 0, image);
 }
 
@@ -227,8 +333,8 @@ Matrix4 Renderer::perspectiveMat(float near, float far)
 	mat.m[1][1] = 1.f / tanVar;
 	//mat[2][2] = near / (far - near);
 	//mat[2][3] = near * far / (far - near);
-	mat.m[2][2] = (far + near) / (near - far);
-	mat.m[2][3] = -2 * near * far / (near - far);
+	mat.m[2][2] = (far + near) / (far - near);
+	mat.m[2][3] = near * far / (near - far);
 	mat.m[3][2] = 1;
 	mat.m[3][3] = 0;
 	return mat;
@@ -257,9 +363,9 @@ void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2
 			int dy3 = y3 - y;
 
 
-			int v1 = dx1 * dy2 - dx2 * dy1;
-			int v2 = dx2 * dy3 - dx3 * dy2;
-			int v3 = dx3 * dy1 - dx1 * dy3;
+			qint64 v1 = dx1 * dy2 - dx2 * dy1;
+			qint64 v2 = dx2 * dy3 - dx3 * dy2;
+			qint64 v3 = dx3 * dy1 - dx1 * dy3;
 
 			if (v1 * v2 >= 0 && v1 * v3 >= 0 && v2 * v3 >= 0)
 			{
@@ -331,11 +437,17 @@ void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2
 
 }
 
-void Renderer::drawSkyFragment(const Vector3f&v1, const Vector2f& p1, const Vector3f& v2, const Vector2f& p2, const Vector3f& v3, const Vector2f& p3, CubeTexture* texture)
+void Renderer::drawSkyFragment(const Vector3f&v1, const Vector2f& p1, float z1,
+	const Vector3f& v2, const Vector2f& p2, float z2,
+	const Vector3f& v3, const Vector2f& p3, float z3, CubeTexture* texture)
 {
 	int x1 = p1.x; int y1 = p1.y;
 	int x2 = p2.x; int y2 = p2.y;
 	int x3 = p3.x; int y3 = p3.y;
+
+	float hz1 = 1.f / z1;
+	float hz2 = 1.f / z2;
+	float hz3 = 1.f / z3;
 
 	int minx = std::max(findMin(x1, x2, x3), 1);
 	int miny = std::max(findMin(y1, y2, y3), 1);
@@ -351,6 +463,7 @@ void Renderer::drawSkyFragment(const Vector3f&v1, const Vector2f& p1, const Vect
 			{
 				continue;
 			}
+			
 			int dx1 = x1 - x;
 			int dy1 = y1 - y;
 			int dx2 = x2 - x;
@@ -359,36 +472,45 @@ void Renderer::drawSkyFragment(const Vector3f&v1, const Vector2f& p1, const Vect
 			int dy3 = y3 - y;
 
 
-			int c1 = dx1 * dy2 - dx2 * dy1;
-			int c2 = dx2 * dy3 - dx3 * dy2;
-			int c3 = dx3 * dy1 - dx1 * dy3;
+			qint64 c1 = dx1 * dy2 - dx2 * dy1;
+			qint64 c2 = dx2 * dy3 - dx3 * dy2;
+			qint64 c3 = dx3 * dy1 - dx1 * dy3;
 
 
 			if (c1 * c2 >= 0 && c1 * c3 >= 0 && c2 * c3 >= 0)
 			{
-				int temp = (-(x1 - x2) * (y3 - y2) + (y1 - y2) * (x3 - x2));
-				float a = 0;
-				if (temp != 0)
-				{
-					a = (float((-(x - x2) * (y3 - y2) + (y - y2) * (x3 - x2)))) / (float(temp));
-				}
-				float b = 0;
-				temp = (-(x2 - x3) * (y1 - y3) + (y2 - y3) * (x1 - x3));
-				if (temp != 0)
-				{
-					b = (float((-(x - x3) * (y1 - y3) + (y - y3) * (x1 - x3)))) / (float(temp));
-				}
-				float c = std::max((1.f - a - b), 0.f);
+				Vector2f p{ x, y };
+				float areaA = (p - p2).corss(p3 - p2);
+				float areaB = (p - p3).corss(p1 - p3);
+				float areaC = (p - p1).corss(p2 - p1);
+				float area = areaA + areaB + areaC;
+				float a = areaA / area;
+				float b = areaB / area;
+				float c = areaC / area;
 
-				Vector3f dir = v1 * a + v2 * b + v3 * c;
+				
+				
+
+				
+
+				float hz = 1.f / ((a * hz1) + (b * hz2) + (c * hz3));
+
+				Vector3f dir = (v1 * a * hz1 + v2 * b * hz2 + v3 * c * hz3) / hz;
+				
+
+				dir.normalize();
 				Vector3f color = texture->sample(dir);
-				//color = { 1.f, 0.f, 0.f };
-				float* p = (float*)&color;
+				
+				float* pf = (float*)&color;
 				for (int i = 0; i < 3; ++i)
 				{
-					if (*(p + i) > 1.f)
+					if (*(pf + i) > 1.f)
 					{
-						*(p + i) = 1.f;
+						*(pf + i) = 1.f;
+					}
+					else if (*(pf + i) < 0.f)
+					{
+						*(pf + i) = 0.f;
 					}
 				}
 				int red = color.x * 255;
@@ -409,4 +531,213 @@ void Renderer::clear()
 {
 	memset(m_zbuffer, 0, clientWidth * clientHeight * 4);
 	memset(m_frameData, 0, clientWidth * clientHeight * 4);
+}
+
+bool Renderer::checkCull(const Vector4f & v1, const Vector4f & v2, const Vector4f & v3)
+{
+	if (v1.w < m_scene->nearPlane || v2.w < m_scene->nearPlane || v3.w < m_scene->nearPlane)
+	{
+		return true;
+	}
+	if (v1.x + v1.w < 0 || v2.x + v2.w < 0 || v3.x + v3.w < 0)
+	{
+		return true;
+	}
+	if (v1.x - v1.w > 0 || v2.x - v2.w > 0 || v3.x - v3.w > 0)
+	{
+		return true;
+	}
+	if (v1.y + v1.w < 0 || v2.y + v2.w < 0 || v3.y + v3.w < 0)
+	{
+		return true;
+	}
+	if (v1.y - v1.w > 0 || v2.y - v2.w > 0 || v3.y - v3.w > 0)
+	{
+		return true;
+	}
+	if (v1.z + v1.w < 0 || v2.z + v2.w < 0 || v3.y + v3.w < 0)
+	{
+		return true;
+	}
+	if (v1.z - v1.w > 0 || v2.z - v2.w > 0 || v3.y - v3.w > 0)
+	{
+		return true;
+	}
+	if (v1.w < clipw || v2.w < clipw || v3.w < clipw)
+	{
+		return true;
+	}
+	return false;
+}
+
+std::vector<Vector4f> Renderer::sidesClip(const Vector4f & v1, const Vector4f & v2, const Vector4f & v3)
+{
+	std::vector<Vector4f> output;
+	std::vector<Vector4f> inputW{ v1, v2, v3 };
+
+	m_inputvs.clear();
+	for (int i = 0; i < inputW.size(); ++i)
+	{
+		auto& current = inputW[i];
+		auto& last = inputW[(i + inputW.size() - 1) % inputW.size()];
+
+		m_index1 = i;
+		m_index2 = (i+inputW.size() - 1) % inputW.size();
+		if (inside(current, 6))
+		{
+			if (!inside(last, 6))
+			{
+				output.push_back(clipLineW(current, last));
+				
+			}
+			m_currentnvs.push_back(m_currentvs[m_index1]);
+			output.push_back(current);
+		}
+		else if (inside(last, 6))
+		{
+			output.push_back(clipLineW(current, last));
+		}
+	}
+	for (int i = 0; i < 4; ++i)
+	{
+		m_inputvs = m_currentnvs;
+		m_currentnvs.clear();
+		std::vector<Vector4f> input(output);
+		output.clear();
+		int size = input.size();
+		for (int j = 0; j < size; ++j)
+		{
+			auto& current = input[j];
+			auto& last = input[(j + size - 1) % size];
+
+			m_index2 = j;
+			m_index1 = (j + size - 1) % size;
+			if (inside(current, i))
+			{
+				if(!inside(last, i))
+				{
+					output.push_back(clipLine(last, current, m_sides[i], i));
+				}
+				output.push_back(current);
+				m_currentnvs.push_back(m_inputvs[m_index2]);
+
+			}
+			else if (inside(last, i))
+			{
+				output.push_back(clipLine(last, current, m_sides[i], i));
+				//output.push_back(current);
+			}
+		}
+	}
+	return output;
+}
+
+Vector4f Renderer::clipLine(const Vector4f & v1, const Vector4f & v2, const Vector4f & side, int index)
+{
+	float k1, k2;
+	switch (index)
+	{
+	case 0:
+	case 1:
+	{
+		k1 = v1.x;
+		k2 = v2.x;
+		break;
+	}
+	case 2:
+	case 3:
+	{
+		k1 = v1.y;
+		k2 = v2.y;
+		break;
+	}
+	case 4:
+	case 5:
+	{
+		k1 = v1.z;
+		k2 = v2.z;
+		break;
+	}
+	case 6:
+	{
+		k1 = v1.w;
+		k2 = v2.w;
+		break;
+	}
+	}
+	if (index == 0 || index == 3 || index == 4)
+	{
+		k1 *= -1;
+		k2 *= -1;
+	}
+	float t = (v1.w - k1) / ((v1.w - k1) - (v2.w - k2));
+	/*
+	float c1 = v1.dot(side);
+	float c2 = v2.dot(side);
+	float weight = c2 / (c2 - c1);
+	*/
+
+	m_currentnvs.push_back(m_inputvs[m_index1] + (m_inputvs[m_index2] - m_inputvs[m_index1]) * t);
+	return v1 + (v2 - v1) * t;
+}
+
+Vector4f Renderer::clipLineW(const Vector4f & v1, const Vector4f & v2)
+{
+	float t = (v1.w - clipw) / (v1.w - v2.w);
+
+	m_currentnvs.push_back(m_currentvs[m_index1] + (m_currentvs[m_index2] - m_currentvs[m_index1]) * t);
+	
+	return v1 + (v2 - v1) * t;
+}
+
+bool Renderer::inside(const Vector4f & v, const Vector4f & line)
+{
+	float dot = v.dot(line);
+	return dot >= 0;
+}
+
+bool Renderer::inside(const Vector4f & v, int index)
+{
+	bool in = true;
+	switch (index)
+	{
+		case 0:
+		{
+			in = v.x > -v.w;
+			break;
+		}
+		case 1:
+		{
+			in = v.x < v.w;
+			break;
+		}
+		case 2:
+		{
+			in = v.y < v.w;
+			break;
+		}
+		case 3:
+		{
+			in = v.y > -v.w;
+
+			break;
+		}
+		case 4:
+		{
+			in = v.z > -v.w;
+			break;
+		}
+		case 5:
+		{
+			in = v.z < v.w;
+			break;
+		}
+		case 6:
+		{
+			in = v.w > clipw;
+		
+			break;
+		}
+	}
+	return in;
 }

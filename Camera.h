@@ -7,14 +7,17 @@ public:
 	{
 		if (useSphereMode)
 		{
-			pos.x = radius * cosf(pitch) * cosf(yaw) + target.x;
-			pos.y = radius * sinf(pitch) + target.y;
-			pos.z = radius * cosf(pitch) * sinf(yaw) + target.z;
+			float rp = radian(pitch);
+			float ry = radian(yaw);
+			pos.x = radius * cosf(rp) * cosf(ry) + target.x;
+			pos.y = radius * sinf(rp) + target.y;
+			pos.z = radius * cosf(rp) * sinf(ry) + target.z;
 		}
 
-		Vector3f dir = pos - target;
+		Vector3f dir = target - pos;
 		dir.normalize();
 		Vector3f up{ 0.f, 1.f, 0.f};
+	
 		Vector3f post = up.cross(dir);
 		post.normalize();
 		up = dir.cross(post);

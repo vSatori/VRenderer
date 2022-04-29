@@ -4,6 +4,17 @@
 
 struct Vector2f
 {
+	float corss(const Vector2f& vec)const
+	{
+		return x * vec.y - y * vec.x;
+	}
+	Vector2f operator-(const Vector2f& vec)const
+	{
+		Vector2f res;
+		res.x = x - vec.x;
+		res.y = y - vec.y;
+		return res;
+	}
 	float x;
 	float y;
 };
@@ -23,6 +34,10 @@ struct Vector3f
 	void normalize()
 	{
 		float len = length();
+		if (len <= 0.f)
+		{
+			return;
+		}
 		x /= len;
 		y /= len;
 		z /= len;
@@ -128,6 +143,15 @@ public:
 
 struct Vector4f
 {
+	Vector4f()
+	{
+
+	}
+	Vector4f(float x, float y, float z, float w) : 
+		x(x), y(y),z(z),w(w)
+	{
+
+	}
 	Vector4f(const Vector3f& vec3) :
 		x(vec3.x),
 		y(vec3.y),
@@ -141,12 +165,49 @@ struct Vector4f
 		w = 1.f;
 		return *this;
 	}
+	Vector4f operator+(const Vector4f& vec4)const
+	{
+		Vector4f res;
+		res.x = x + vec4.x;
+		res.y = y + vec4.y;
+		res.z = z + vec4.z;
+		res.w = w + vec4.w;
+
+		return res;
+	}
+
+	Vector4f operator-(const Vector4f& vec4)const
+	{
+		Vector4f res;
+		res.x = x - vec4.x;
+		res.y = y - vec4.y;
+		res.z = z - vec4.z;
+		res.w = w - vec4.w;
+			
+		return res;
+	}
+
+	Vector4f operator*(float v)const
+	{
+		Vector4f res;
+		res.x = x * v;
+		res.y = y * v;
+		res.z = z * v;
+		res.w = w * v;
+
+		return res;
+	}
+
 	Vector4f operator/=(float w)
 	{
 		x /= w;
 		y /= w;
 		z /= w;
 		return *this;
+	}
+	float dot(const Vector4f& vec4) const
+	{
+		return x * vec4.x + y * vec4.y + z * vec4.z + w * vec4.w;
 	}
 	float x;
 	float y;
@@ -191,7 +252,10 @@ public:
 			for (int col = 0; col < 4; ++col)
 
 			{
-				res.m[row][col] = m[row][col] * mat.m[col][row];
+				res.m[row][col] = m[row][0] * mat.m[0][col]
+					+ m[row][1] * mat.m[1][col]
+					+ m[row][2] * mat.m[2][col]
+					+ m[row][3] * mat.m[3][col];
 			}
 		}
 		return res;
@@ -206,9 +270,9 @@ public:
 		return *this;
 	}
 	
-	Vector3f operator*(const Vector4f& vec)const
+	Vector4f operator*(const Vector4f& vec)const
 	{
-		Vector3f res;
+		Vector4f res;
 		float temp[4];
 
 
@@ -260,5 +324,10 @@ inline int findMin(int v1, int v2, int v3)
 		return v2;
 	}
 	return v3;
+}
+
+inline float radian(float angle)
+{
+	return 3.1415926 / 180.0 * angle;
 }
 
