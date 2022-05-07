@@ -7,21 +7,26 @@
 class Texture
 {
 public:
+	Texture();
 	Texture(const char* fileName);
 	~Texture();
 public:
+	void setRowData(unsigned int* data, unsigned int width, unsigned int height);
 	Vector3f sample(float u, float v);
+	unsigned int sampleValue(float u, float v);
 private:
 	std::vector<Vector3f> m_components;
+	unsigned int* m_rowData;
 	unsigned int m_width;
 	unsigned int m_height;
+	unsigned int m_maxIndex;
 };
 
 
-class CubeTexture
+class CubeMap
 {
 public:
-	CubeTexture(const std::vector<std::string>& files);
+	CubeMap(const std::vector<std::string>& files);
 	enum class Direction{LEFT,RIGHT,TOP,BOTTOM,FRONT,BACK};
 public:
 	Vector3f sample(const Vector3f& dir);
@@ -29,3 +34,14 @@ private:
 	std::map<Direction, std::unique_ptr<Texture>> m_textures;
 };
 
+class DynamicCubeMap
+{
+public:
+	DynamicCubeMap();
+	enum class Direction { LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK };
+public:
+	void setRowData(Direction dir, unsigned int* data, unsigned int width, unsigned int height);
+	unsigned int sample(const Vector3f& dir);
+private:
+	std::map<Direction, std::unique_ptr<Texture>> m_textures;
+};

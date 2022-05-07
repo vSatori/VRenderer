@@ -16,6 +16,7 @@ public:
 
 		Vector3f dir = target - pos;
 		dir.normalize();
+		//
 		Vector3f up{ 0.f, 1.f, 0.f};
 	
 		Vector3f post = up.cross(dir);
@@ -47,6 +48,7 @@ public:
 public:
 	Vector3f pos;
 	Vector3f target;
+	Vector3f up;
 	float radius;
 	Matrix4 viewMat;
 	float yaw;

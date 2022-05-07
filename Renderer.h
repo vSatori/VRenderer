@@ -27,9 +27,10 @@ protected:
 	virtual void wheelEvent(QWheelEvent *event)override;
 private:
 	Matrix4 perspectiveMat(float near, float far);
+	Matrix4 modelMat();
 	void drawFragment(const VertexOut& v1, const VertexOut& v2, const VertexOut& v3);
 	void drawSkyFragment(const Vector3f&v1, const Vector2f& p1, float z1,  const Vector3f& v2, const Vector2f& p2, float z2,
-		const Vector3f& v3, const Vector2f& p3, float z3, CubeTexture* texture);
+		const Vector3f& v3, const Vector2f& p3, float z3, CubeMap* texture);
 	void clear();
 	bool checkCull(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3);
 	std::vector<Vector4f> sidesClip(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3);
@@ -37,10 +38,12 @@ private:
 	Vector4f clipLineW(const Vector4f& v1, const Vector4f& v2);
 	bool inside(const Vector4f& v, const Vector4f& line);
 	bool inside(const Vector4f& v, int index);
+	void generateCubeMap();
 	
 
 private:
 	unsigned int* m_frameData;
+	unsigned int* m_curFrameData;
 	float* m_zbuffer;
 	Scene* m_scene;
 	ShaderInfo m_shaderInfo;
@@ -49,6 +52,7 @@ public:
 	static float s_maxX;
 	static float s_minY;
 	static float s_maxY;
+	int m_count;
 private:
 	int m_lastX;
 	int m_lastY;
@@ -61,5 +65,5 @@ private:
 	std::vector<Vector3f> m_currentnvs;
 	int m_index1;
 	int m_index2;
-
+	bool m_reflect;
 };

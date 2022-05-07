@@ -141,6 +141,7 @@ public:
 	float z;
 };
 
+
 struct Vector4f
 {
 	Vector4f()
@@ -328,6 +329,6 @@ inline int findMin(int v1, int v2, int v3)
 
 inline float radian(float angle)
 {
-	return 3.1415926 / 180.0 * angle;
+	return 3.1415926f / 180.f * angle;
 }
 

@@ -10,6 +10,6 @@ public:
 	std::vector<Vector3f> vertices;
 	std::vector<Vector3f> vertexNormals;
 	std::vector<Vector3i> indices;
-	std::unique_ptr<CubeTexture> texture;
+	std::unique_ptr<CubeMap> texture;
 };
 

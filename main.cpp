@@ -2,6 +2,7 @@
 #include <QtWidgets/QApplication>
 #include <qtimer.h>
 #include <Windows.h>
+#include <qtimer.h>
 #include "SkyBox.h"
 #include "Scene.h"
 int main(int argc, char *argv[])
@@ -10,12 +11,20 @@ int main(int argc, char *argv[])
     Renderer w;
     w.show();
 	std::vector<std::string> files;
+	/*
 	files.push_back("D:/Project/Renderer/skybox/skybox/sunset_negX.bmp");
 	files.push_back("D:/Project/Renderer/skybox/skybox/sunset_posX.bmp");
 	files.push_back("D:/Project/Renderer/skybox/skybox/sunset_posY.bmp");
 	files.push_back("D:/Project/Renderer/skybox/skybox/sunset_negY.bmp");
 	files.push_back("D:/Project/Renderer/skybox/skybox/sunset_negZ.bmp");
 	files.push_back("D:/Project/Renderer/skybox/skybox/sunset_posZ.bmp");
+	*/
+	files.push_back("D:/Project/Renderer/skybox/skybox/left.bmp");
+	files.push_back("D:/Project/Renderer/skybox/skybox/right.bmp");
+	files.push_back("D:/Project/Renderer/skybox/skybox/top.bmp");
+	files.push_back("D:/Project/Renderer/skybox/skybox/bottom.bmp");
+	files.push_back("D:/Project/Renderer/skybox/skybox/back.bmp");
+	files.push_back("D:/Project/Renderer/skybox/skybox/front.bmp");
 	Scene scene;
 	scene.sky = std::make_unique<SkyBox>();
 	scene.sky->vertices.resize(36);
@@ -87,22 +96,64 @@ int main(int argc, char *argv[])
 		Vector3f v1{ p2.x - p1.x, p2.y - p1.y, p2.z - p1.z };
 		Vector3f v2{ p3.x - p2.x, p3.y - p2.y, p3.z - p2.z };
 		Vector3f normal = v1.cross(v2);
+		normal.normalize();
+		normal *= -1;
 		scene.sky->vertexNormals[i * 3 + 0] = normal;
 		scene.sky->vertexNormals[i * 3 + 1] = normal;
 		scene.sky->vertexNormals[i * 3 + 2] = normal;
 	}
+
+	Mesh mesh;
+	mesh.reflect = true;
+	mesh.indices = scene.sky->indices;
+	mesh.vertices.resize(scene.sky->vertices.size());
+	for (int i = 0; i < mesh.vertices.size(); ++i)
+	{
+		mesh.vertices[i].pos = scene.sky->vertices[i];
+		mesh.vertices[i].normal = scene.sky->vertexNormals[i];
+	}
+	scene.reflectMeshes.push_back(mesh);
+
+	Mesh dynamicMesh;
+	dynamicMesh.reflect = false;
+	dynamicMesh.indices = scene.sky->indices;
+	dynamicMesh.vertices.resize(scene.sky->vertices.size());
+	for (int i = 0; i < mesh.vertices.size(); ++i)
+	{
+		dynamicMesh.vertices[i].pos = scene.sky->vertices[i] * 0.2f;
+		dynamicMesh.vertices[i].normal = scene.sky->vertexNormals[i];
+	}
+	scene.meshes.push_back(dynamicMesh);
+
+	scene.envCubeMap = std::make_unique<DynamicCubeMap>();
+
 	scene.nearPlane = 1.f;
 	scene.farPlane = 1000.f;
-	scene.sky->texture = std::make_unique<CubeTexture>(files);
-	scene.camera.radius = 1.f;
-	scene.camera.target = { 0.f, 0.f, 1.f };
+	scene.sky->texture = std::make_unique<CubeMap>(files);
+	scene.camera.radius = 10.f;
+	scene.camera.target = { 0.f, 0.f, 0.f };
 	scene.camera.yaw = 90.f;
 	scene.camera.pitch = 0.f;
-	scene.camera.pos = { -10.f, 0.f, -10.f };
-	scene.camera.useSphereMode = false;
+	scene.camera.up = { 0.f, 1.f, 0.f };
+	scene.camera.pos = { 0.f, 0.f, -10.f };
+	scene.camera.useSphereMode = true;
 	w.setScene(&scene);
+	w.m_count = 0;
 	//w.drawTriangle();
-	w.render();
+	QTimer timer;
+	timer.setInterval(30);
+	QObject::connect(&timer, &QTimer::timeout, [&w]()
+		{
+			w.m_count += 2;
+			if (w.m_count > 360)
+			{
+				w.m_count = 0;
+			}
+			w.render();
+			QApplication::processEvents();
+		});
+	timer.start();
+	//w.render();
     return a.exec();
 
 }

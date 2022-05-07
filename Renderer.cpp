@@ -43,7 +43,9 @@ void Renderer::render()
 	{
 		return;
 	}
+	generateCubeMap();
 	clear();
+	m_curFrameData = m_frameData;
 	m_scene->camera.update();
 	Matrix4 matView = m_scene->camera.viewMat;
 	Matrix4 matpers = perspectiveMat(m_scene->nearPlane, m_scene->farPlane);
@@ -51,8 +53,47 @@ void Renderer::render()
 	for (int index = 0; index < m_scene->meshes.size(); ++index)
 	{
 		Mesh& mesh = m_scene->meshes[index];
+		Matrix4 matModel = modelMat();
 		int faceSize = mesh.indices.size();
-		for (int i = 0; i < 1; ++i)
+		for (int i = 0; i < faceSize; ++i)
+		{
+			Vertex& v1 = mesh.vertices[mesh.indices[i].u];
+			Vector4f w1 = matModel * Vector4f(v1.pos);
+			Vector3f v{ w1.x, w1.y, w1.z };
+			Vector3f dir = m_scene->camera.pos - v;
+			if (dir.dot(v1.normal) <= 0)
+			{
+				continue;
+			}
+			Vertex& v2 = mesh.vertices[mesh.indices[i].v];
+			Vertex& v3 = mesh.vertices[mesh.indices[i].w];
+			Vector4f t1(v1.pos);
+			Vector4f t2(v2.pos);
+			Vector4f t3(v3.pos);
+			
+			Matrix4 mvp = mat * matModel;
+			t1 = mvp * t1;
+		    t2 = mvp * t2;
+		    t3 = mvp * t3;
+			t1 /= t1.w;
+			t2 /= t2.w;
+			t3 /= t3.w;
+			m_reflect = false;
+			Vector2f p1{ (t1.x + 1.f) * 0.5f * clientWidth,  (1.f - t1.y) * 0.5f * clientHeight};
+			Vector2f p2{ (t2.x + 1.f) * 0.5f * clientWidth,  (1.f - t2.y) * 0.5f * clientHeight };
+			Vector2f p3{ (t3.x + 1.f) * 0.5f * clientWidth,  (1.f - t3.y) * 0.5f * clientHeight };
+		
+			VertexOut vo1{ v1, p1, 1.f / t1.w };
+			VertexOut vo2{ v2, p2, 1.f / t2.w };
+			VertexOut vo3{ v3, p3, 1.f / t3.w };
+			drawFragment(vo1, vo2, vo3);
+		}
+	}
+	for (int index = 0; index < m_scene->reflectMeshes.size(); ++index)
+	{
+		Mesh& mesh = m_scene->reflectMeshes[index];
+		int faceSize = mesh.indices.size();
+		for (int i = 0; i < faceSize; ++i)
 		{
 			Vertex& v1 = mesh.vertices[mesh.indices[i].u];
 			Vector3f dir = m_scene->camera.pos - v1.pos;
@@ -66,13 +107,13 @@ void Renderer::render()
 			Vector4f t2(v2.pos);
 			Vector4f t3(v3.pos);
 			t1 = mat * t1;
-		    t2 = mat * t2;
-		    t3 = mat * t3;
+			t2 = mat * t2;
+			t3 = mat * t3;
 			t1 /= t1.w;
 			t2 /= t2.w;
 			t3 /= t3.w;
-			
-			Vector2f p1{ (t1.x + 1.f) * 0.5f * clientWidth,  (1.f - t1.y) * 0.5f * clientHeight};
+			m_reflect = true;
+			Vector2f p1{ (t1.x + 1.f) * 0.5f * clientWidth,  (1.f - t1.y) * 0.5f * clientHeight };
 			Vector2f p2{ (t2.x + 1.f) * 0.5f * clientWidth,  (1.f - t2.y) * 0.5f * clientHeight };
 			Vector2f p3{ (t3.x + 1.f) * 0.5f * clientWidth,  (1.f - t3.y) * 0.5f * clientHeight };
 			VertexOut vo1{ v1, p1, 1.f / t1.w };
@@ -94,7 +135,7 @@ void Renderer::render()
 
 		int faceSize = sky->indices.size();
 		Vector3f origin{ 0.f, 0.f, 0.f };
-		for (int i = 4; i < 8; ++i)
+		for (int i = 0 ; i < faceSize; ++i)
 		{
 			int u = sky->indices[i].u;
 			int v = sky->indices[i].v;
@@ -108,9 +149,9 @@ void Renderer::render()
 			t1 = mat * t1;
 			t2 = mat * t2;
 			t3 = mat * t3;
-			t1.z = t1.w;
-			t2.z = t2.w;
-			t3.z = t3.w;
+			//t1.z = t1.w;
+			//t2.z = t2.w;
+			//t3.z = t3.w;
 			
 			if (checkCull(t1, t2, t3))
 			{
@@ -160,11 +201,7 @@ void Renderer::render()
 				Vector2f p3{ (t3.x + 1.f) * 0.5f * clientWidth,  (1.f - t3.y) * 0.5f * clientHeight };
 				drawSkyFragment(v1, p1, t1.w, v2, p2, t2.w, v3, p3, t3.w, sky->texture.get());
 			}
-			qDebug() << i << s_maxX << s_minX << s_maxY << s_minY;
-			s_maxX = -1;
-			s_minX = 1;
-			s_maxY = -1;
-			s_minY = 1;
+			
 			
 		}
 		
@@ -268,7 +305,7 @@ void Renderer::mousePressEvent(QMouseEvent * e)
 	static bool first = true;
 	if (first)
 	{
-		first = false;
+		//first = false;
 		m_lastX = e->pos().x();
 		m_lastY = e->pos().y();
 	}
@@ -298,7 +335,7 @@ void Renderer::mouseMoveEvent(QMouseEvent * e)
 	}
 	m_lastX = x;
 	m_lastY = y;
-	render();
+	//render();
 }
 
 void Renderer::mouseReleaseEvent(QMouseEvent * e)
@@ -340,6 +377,15 @@ Matrix4 Renderer::perspectiveMat(float near, float far)
 	return mat;
 }
 
+Matrix4 Renderer::modelMat()
+{
+	Matrix4 mat;
+	//mat.m[2][3] = -6.f;
+	mat.m[0][3] = cosf(m_count * 3.14159f / 180.f) * 7;
+	mat.m[2][3] = sinf(m_count * 3.14159f / 180.f) * 7;
+	return mat;
+}
+
 void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2, const VertexOut & vertex3)
 {
 	int x1 = vertex1.point.x; int y1 = vertex1.point.y;
@@ -369,19 +415,14 @@ void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2
 
 			if (v1 * v2 >= 0 && v1 * v3 >= 0 && v2 * v3 >= 0)
 			{
-				int temp = (-(x1 - x2) * (y3 - y2) + (y1 - y2) * (x3 - x2));
-				float a = 0;
-				if (temp != 0)
-				{
-					a = (float((-(x - x2) * (y3 - y2) + (y - y2) * (x3 - x2)))) / (float(temp));
-				}
-				float b = 0;
-				temp = (-(x2 - x3) * (y1 - y3) + (y2 - y3) * (x1 - x3));
-				if (temp != 0)
-				{
-					b = (float((-(x - x3) * (y1 - y3) + (y - y3) * (x1 - x3)))) / (float(temp));
-				}
-				float c = std::max((1.f - a - b), 0.f);
+				Vector2f p{ x, y };
+				float areaA = (p - vertex2.point).corss(vertex3.point - vertex2.point);
+				float areaB = (p - vertex3.point).corss(vertex1.point - vertex3.point);
+				float areaC = (p - vertex1.point).corss(vertex2.point - vertex1.point);
+				float area = areaA + areaB + areaC;
+				float a = areaA / area;
+				float b = areaB / area;
+				float c = areaC / area;
 				
 
 				float z = vertex1.z * a + vertex2.z * b + vertex3.z * c;
@@ -392,12 +433,36 @@ void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2
 				}
 
 				
-				Vector3f pos = vertex1.vin.pos * a + vertex2.vin.pos * b + vertex1.vin.pos * c;
-				if (pos.z < m_scene->nearPlane || pos.z > m_scene->farPlane)
+				Vector3f pos = vertex1.vin.pos * a + vertex2.vin.pos * b + vertex3.vin.pos * c;
+				
+				Vector3f normal = vertex1.vin.normal * a + vertex2.vin.normal * b + vertex3.vin.normal * c;
+				if (m_reflect)
 				{
+					Vector3f viewDir = m_scene->camera.pos - pos;
+					viewDir.normalize();
+					Vector3f dir = (viewDir * -1).reflect(normal);
+					dir.normalize();
+					unsigned int color = m_scene->envCubeMap->sample(dir);
+					
+					
+					
+					
+					m_zbuffer[index] = z;
+					m_curFrameData[index] = color;
+					continue;
+				
+				}
+				else
+				{
+					Vector3f color = { 1.f, 0.f, 0.f };
+					int red = color.x * 255;
+					int green = color.y * 255;
+					int blue = color.z * 255;
+					unsigned int colorValue = (red << 16) + (green << 8) + blue;
+					m_zbuffer[index] = z;
+					m_curFrameData[index] = colorValue;
 					continue;
 				}
-				Vector3f normal = vertex1.vin.normal * a + vertex2.vin.normal * b + vertex1.vin.normal * c;
 				Vector3f color;
 				if (m_shaderInfo.texture)
 				{
@@ -414,12 +479,12 @@ void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2
 				{
 					litColor = litColor + light.caculate(m_scene->camera.pos, pos, normal);
 				}
-				float* p = (float*)&litColor;
+				float* pc = (float*)&litColor;
 				for (int i = 0; i < 3; ++i)
 				{
-					if (*(p + i) > 1.f)
+					if (*(pc + i) > 1.f)
 					{
-						*(p + i) = 1.f;
+						*(pc + i) = 1.f;
 					}
 				}
 				color = color * litColor;
@@ -428,7 +493,7 @@ void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2
 				int blue = color.z * 255;
 				unsigned int colorValue = (red << 16) + (green << 8) + blue;
 				m_zbuffer[index] = z;
-				m_frameData[index] = colorValue;
+				m_curFrameData[index] = colorValue;
 			}
 
 
@@ -439,7 +504,7 @@ void Renderer::drawFragment(const VertexOut & vertex1, const VertexOut & vertex2
 
 void Renderer::drawSkyFragment(const Vector3f&v1, const Vector2f& p1, float z1,
 	const Vector3f& v2, const Vector2f& p2, float z2,
-	const Vector3f& v3, const Vector2f& p3, float z3, CubeTexture* texture)
+	const Vector3f& v3, const Vector2f& p3, float z3, CubeMap* texture)
 {
 	int x1 = p1.x; int y1 = p1.y;
 	int x2 = p2.x; int y2 = p2.y;
@@ -489,10 +554,6 @@ void Renderer::drawSkyFragment(const Vector3f&v1, const Vector2f& p1, float z1,
 				float c = areaC / area;
 
 				
-				
-
-				
-
 				float hz = 1.f / ((a * hz1) + (b * hz2) + (c * hz3));
 
 				Vector3f dir = (v1 * a * hz1 + v2 * b * hz2 + v3 * c * hz3) / hz;
@@ -501,23 +562,11 @@ void Renderer::drawSkyFragment(const Vector3f&v1, const Vector2f& p1, float z1,
 				dir.normalize();
 				Vector3f color = texture->sample(dir);
 				
-				float* pf = (float*)&color;
-				for (int i = 0; i < 3; ++i)
-				{
-					if (*(pf + i) > 1.f)
-					{
-						*(pf + i) = 1.f;
-					}
-					else if (*(pf + i) < 0.f)
-					{
-						*(pf + i) = 0.f;
-					}
-				}
 				int red = color.x * 255;
 				int green = color.y * 255;
 				int blue = color.z * 255;
 				unsigned int colorValue = (red << 16) + (green << 8) + blue;
-				m_frameData[index] = colorValue;
+				m_curFrameData[index] = colorValue;
 
 			}
 		}
@@ -598,7 +647,7 @@ std::vector<Vector4f> Renderer::sidesClip(const Vector4f & v1, const Vector4f & 
 			output.push_back(clipLineW(current, last));
 		}
 	}
-	for (int i = 0; i < 4; ++i)
+	for (int i = 0; i < 6; ++i)
 	{
 		m_inputvs = m_currentnvs;
 		m_currentnvs.clear();
@@ -740,4 +789,181 @@ bool Renderer::inside(const Vector4f & v, int index)
 		}
 	}
 	return in;
+}
+
+void Renderer::generateCubeMap()
+{
+	Camera camera;
+	camera.useSphereMode = false;
+	camera.pos = { 0.f, 0.f, 0.f };
+	Vector3f targets[6] =
+	{
+		{-1.f, 0.f, 0.f},
+		{1.f, 0.f, 0.f},
+		{0.f, 1.f, 0.01f},
+		{0.f, -1.f, 0.01f},
+		{0.f, 0.f, -1.f},
+		{0.f, 0.f, 1.f},
+	};
+
+	Vector3f ups[6] =
+	{
+		{0.f, 1.f, 0.f},
+		{0.f, 1.f, 0.f},
+		{0.f, 1.f, 0.f},
+		{0.f, 1.f, 0.f},
+		{0.f, 1.f, 0.f},
+		{0.f, 1.f, 0.f},
+	};
+
+	Matrix4 matPers = perspectiveMat(m_scene->nearPlane, m_scene->farPlane);
+	
+	
+	for (int faceIndex = 0; faceIndex < 6; ++faceIndex)
+	{
+		unsigned int* buff = new unsigned int[clientWidth * clientHeight];
+		m_curFrameData = buff;
+	
+		camera.target = targets[faceIndex];
+		camera.up = ups[faceIndex];
+		camera.update();
+		Matrix4 matView = camera.viewMat;
+		Matrix4 mat = matPers * matView;
+		m_reflect = false;
+		clear();
+		for (int index = 0; index < m_scene->meshes.size(); ++index)
+		{
+			Mesh& mesh = m_scene->meshes[index];
+			Matrix4 matModel = modelMat();
+			int faceSize = mesh.indices.size();
+			for (int i = 0; i < faceSize; ++i)
+			{
+				Vertex& v1 = mesh.vertices[mesh.indices[i].u];
+				Vector4f w1 = matModel * Vector4f(v1.pos);
+				Vector3f v{ w1.x, w1.y, w1.z };
+				Vector3f dir = m_scene->camera.pos - v;
+				if (dir.dot(v1.normal) <= 0)
+				{
+					continue;
+				}
+				Vertex& v2 = mesh.vertices[mesh.indices[i].v];
+				Vertex& v3 = mesh.vertices[mesh.indices[i].w];
+				Vector4f t1(v1.pos);
+				Vector4f t2(v2.pos);
+				Vector4f t3(v3.pos);
+				
+				Matrix4 mvp = mat * matModel;
+				t1 = mvp * t1;
+				t2 = mvp * t2;
+				t3 = mvp * t3;
+			
+					t1 /= t1.w;
+					t2 /= t2.w;
+					t3 /= t3.w;
+					Vector2f p1{ (t1.x + 1.f) * 0.5f * clientWidth,  (1.f - t1.y) * 0.5f * clientHeight };
+					Vector2f p2{ (t2.x + 1.f) * 0.5f * clientWidth,  (1.f - t2.y) * 0.5f * clientHeight };
+					Vector2f p3{ (t3.x + 1.f) * 0.5f * clientWidth,  (1.f - t3.y) * 0.5f * clientHeight };
+					
+					VertexOut vo1{ v1, p1, 1.f / t1.w };
+					VertexOut vo2{ v2, p2, 1.f / t2.w };
+					VertexOut vo3{ v3, p3, 1.f / t3.w };
+					drawFragment(vo1, vo2, vo3);
+				
+
+
+
+
+				
+			}
+		}
+		if (m_scene->sky)
+		{
+			m_pixels.clear();
+			SkyBox * sky = m_scene->sky.get();
+			camera.viewMat.m[0][3] = 0.f;
+			camera.viewMat.m[1][3] = 0.f;
+			camera.viewMat.m[2][3] = 0.f;
+
+			mat = matPers * matView;
+
+
+			int faceSize = sky->indices.size();
+			Vector3f origin{ 0.f, 0.f, 0.f };
+			for (int i = 0; i < faceSize; ++i)
+			{
+				int u = sky->indices[i].u;
+				int v = sky->indices[i].v;
+				int w = sky->indices[i].w;
+				Vector3f& v1 = m_scene->sky->vertices[u];
+				Vector3f& v2 = m_scene->sky->vertices[v];
+				Vector3f& v3 = m_scene->sky->vertices[w];
+				Vector4f t1(v1);
+				Vector4f t2(v2);
+				Vector4f t3(v3);
+				t1 = mat * t1;
+				t2 = mat * t2;
+				t3 = mat * t3;
+	
+
+				if (checkCull(t1, t2, t3))
+				{
+					m_currentvs.clear();
+					m_currentnvs.clear();
+					m_inputvs.clear();
+					m_currentvs.push_back(v1);
+					m_currentvs.push_back(v2);
+					m_currentvs.push_back(v3);
+					std::vector<Vector4f> vs = sidesClip(t1, t2, t3);
+					std::vector<Vector4f> ts(vs);
+					for (auto& v : ts)
+					{
+						v.x /= v.w;
+						v.y /= v.w;
+						v.z /= v.w;
+					}
+					int size = vs.size() - 3 + 1;
+					for (int j = 0; j < size; ++j)
+					{
+						int vIndex1 = 0;
+						int vIndex2 = j + 1;
+						int vIndex3 = j + 2;
+
+
+						Vector3f cv1{ m_currentnvs[vIndex1].x, m_currentnvs[vIndex1].y, m_currentnvs[vIndex1].z };
+						Vector3f cv2{ m_currentnvs[vIndex2].x, m_currentnvs[vIndex2].y, m_currentnvs[vIndex2].z };
+						Vector3f cv3{ m_currentnvs[vIndex3].x, m_currentnvs[vIndex3].y, m_currentnvs[vIndex3].z };
+
+
+
+
+						Vector2f cp1{ (ts[vIndex1].x + 1.f) * 0.5f * clientWidth,  (1.f - ts[vIndex1].y) * 0.5f * clientHeight };
+						Vector2f cp2{ (ts[vIndex2].x + 1.f) * 0.5f * clientWidth,  (1.f - ts[vIndex2].y) * 0.5f * clientHeight };
+						Vector2f cp3{ (ts[vIndex3].x + 1.f) * 0.5f * clientWidth,  (1.f - ts[vIndex3].y) * 0.5f * clientHeight };
+						drawSkyFragment(cv1, cp1, ts[vIndex1].w, cv2, cp2, ts[vIndex2].w, cv3, cp3, ts[vIndex3].w, sky->texture.get());
+					}
+				}
+
+				else
+				{
+					t1 /= (t1.w);
+					t2 /= (t2.w);
+					t3 /= (t3.w);
+					Vector2f p1{ (t1.x + 1.f) * 0.5f * clientWidth,  (1.f - t1.y) * 0.5f * clientHeight };
+					Vector2f p2{ (t2.x + 1.f) * 0.5f * clientWidth,  (1.f - t2.y) * 0.5f * clientHeight };
+					Vector2f p3{ (t3.x + 1.f) * 0.5f * clientWidth,  (1.f - t3.y) * 0.5f * clientHeight };
+					drawSkyFragment(v1, p1, t1.w, v2, p2, t2.w, v3, p3, t3.w, sky->texture.get());
+				}
+
+
+			}
+
+
+
+		}
+
+	
+
+		m_scene->envCubeMap->setRowData(static_cast<DynamicCubeMap::Direction>(faceIndex), buff, clientWidth, clientHeight);
+		delete[] buff;
+	}
 }
