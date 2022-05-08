@@ -4,7 +4,7 @@ using PSFunction = std::function<Vector3f(const VertexOut&)>;
 class PixelShader
 {
 public:
-	Vector3f operator()(const VertexOut& vout)
+	Vector3f execute(const VertexOut& vout)
 	{
 		return function(vout);
 	}
@@ -19,6 +19,12 @@ public:
 	std::weak_ptr<DynamicCubeMap> envCubeMap;
 	std::shared_ptr<Texture> texture;
 	std::vector<std::shared_ptr<Light>> lights;
+};
+
+struct SkyPixelShader : public PixelShader
+{
+public:
+	std::weak_ptr<CubeMap> cubeMap;
 };
 
 PSFunction makeGenericPSFunction(GenericPixelShader* shader)
@@ -52,6 +58,17 @@ PSFunction makeGenericPSFunction(GenericPixelShader* shader)
 			litColor += light->compute(RenderContext::eyePos, vout.posW, vout.normalW);
 		}
 		return color * litColor;
+	};
+	return func;
+}
+
+PSFunction makeSkyPSFunction(SkyPixelShader* shader)
+{
+	auto func = [shader](const VertexOut& vout)
+	{
+		Vector3f pos = vout.vin.pos;
+		pos.normalize();
+		return shader->cubeMap.lock()->sample(pos);
 	};
 	return func;
 }

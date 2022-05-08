@@ -39,7 +39,6 @@ struct PointLight : public Light
 
 struct SpotLight : public Light
 {
-
 	float constant;
 	float linear;
 	float quadratic;
@@ -100,7 +99,6 @@ LightFunction makeComputePointLightFunction(PointLight * light)
 
 LightFunction makeComputeSpotLightFunction(SpotLight * light)
 {
-
 	auto func = [light](const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal)
 	{
 		Vector3f litDir = light->pos - vertexPos;

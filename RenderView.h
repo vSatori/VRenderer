@@ -5,8 +5,6 @@
 
 class RenderView : public QWidget
 {
-	Q_OBJECT
-
 public:
 	RenderView(QWidget *parent = Q_NULLPTR);
 	~RenderView();

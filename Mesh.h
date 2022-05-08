@@ -29,6 +29,19 @@ struct VertexOut
 		res.normalW += vo.normalW;
 		return res;
 	}
+
+	VertexOut operator-(const VertexOut& vo)const
+	{
+		VertexOut res;
+		res.vin.pos -= vo.vin.pos;
+		res.vin.normal -= vo.vin.normal;
+		res.vin.tex -= vo.vin.tex;
+		res.posW -= vo.posW;
+		res.posH -= vo.posH;
+		res.normalW -= vo.normalW;
+		return res;
+	}
+
 	VertexOut operator*(float t)const
 	{
 		VertexOut vout;
@@ -47,12 +60,9 @@ struct VertexOut
 
 struct Mesh
 {
-
-public:
-	
-public:
 	std::vector<Vertex> vertices;
 	std::vector<Vector3i> indices;
+	std::unique_ptr<Texture> texture;
 };
 
 

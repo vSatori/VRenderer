@@ -2,14 +2,12 @@
 #include "Camera.h"
 #include "Mesh.h"
 #include "Light.h"
-class VertexShader;
-class PixelShader;
+#include "VertexShader.h"
+#include "PixelShader.h"
 struct Light;
 struct SkyBox;
 struct Scene
 {
-
-
 public:
 	std::vector<Mesh> meshes;
 	std::vector<Mesh> reflectMeshes;
@@ -25,7 +23,7 @@ class Scene
 {
 public:
 	virtual void render(unsigned int* frame) = 0;
-private:
+protected:
 	void drawMesh(const Mesh& mesh);
 public:
 	Camera camera;
@@ -45,5 +43,9 @@ private:
 	std::unique_ptr<DynamicCubeMap> m_envCubeMap;
 	std::vector<Mesh> m_movingSpheres;
 	Mesh m_reflectSphere;
+	GenericVertexShader* m_sphereVS;
+	GenericPixelShader* m_spherePS;
+	SkyVertexShader* m_skyVS;
+	SkyPixelShader* m_skyPS;
 };
 

@@ -33,8 +33,8 @@ public:
 	static int height;
 	static float near;
 	static float far;
-	static VertexShader vs;
-	static PixelShader ps;
+	static VertexShader* vs;
+	static PixelShader* ps;
 	static const float clipW;
 public:
 	static bool Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
@@ -153,7 +153,7 @@ public:
 					float hz = 1.f / ((a * z1) + (b * z2) + (c * z3));
 
 				    VertexOut vout = (vo1 * (a * z1) + vo2 * (b * z2) + vo3 * (c * z3)) * (1.f / hz);
-					Vector3f color = ps(vout);
+					Vector3f color = ps->execute(vout);
 					
 					float* pc = (float*)&color;
 					for (int i = 0; i < 3; ++i)
@@ -174,6 +174,156 @@ public:
 
 			}
 		}
+	}
+
+	static std::vector<VertexOut> polygonClipping(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
+	{
+		std::vector<VertexOut> output;
+		std::vector<VertexOut> inputW{ vo1, vo2, vo3 };
+		for (int i = 0; i < inputW.size(); ++i)
+		{
+			auto& current = inputW[i];
+			auto& last = inputW[(i + inputW.size() - 1) % inputW.size()];
+
+			if (inside(current.posH, 6))
+			{
+				if (!inside(last.posH, 6))
+				{
+					output.push_back(clipWPlane(current, last));
+
+				}
+				output.push_back(current);
+			}
+			else if (inside(last.posH, 6))
+			{
+				output.push_back(clipWPlane(current, last));
+			}
+		}
+		for (int i = 0; i < 6; ++i)
+		{
+			std::vector<VertexOut> input(output);
+			output.clear();
+			int size = input.size();
+			for (int j = 0; j < size; ++j)
+			{
+				auto& current = input[j];
+				auto& last = input[(j + size - 1) % size];
+
+				
+				if (inside(current.posH, i))
+				{
+					if (!inside(last.posH, i))
+					{
+						output.push_back(clipPlane(last, current, i));
+					}
+					output.push_back(current);
+				}
+				else if (inside(last.posH, i))
+				{
+					output.push_back(clipPlane(last, current, i));
+				}
+			}
+		}
+		return output;
+	}
+
+	static VertexOut clipPlane(const VertexOut& vo1, const VertexOut& vo2, int side)
+	{
+		float k1, k2;
+		switch (side)
+		{
+		case 0:
+		case 1:
+		{
+			k1 = vo1.posH.x;
+			k2 = vo2.posH.x;
+			break;
+		}
+		case 2:
+		case 3:
+		{
+			k1 = vo1.posH.y;
+			k2 = vo2.posH.y;
+			break;
+		}
+		case 4:
+		case 5:
+		{
+			k1 = vo1.posH.z;
+			k2 = vo2.posH.z;
+			break;
+		}
+		case 6:
+		{
+			k1 = vo1.posH.w;
+			k2 = vo2.posH.w;
+			break;
+		}
+		}
+		if (side == 0 || side == 3 || side == 4)
+		{
+			k1 *= -1;
+			k2 *= -1;
+		}
+		float t = (vo1.posH.w - k1) / ((vo1.posH.w - k1) - (vo2.posH.w - k2));
+		/*
+		float c1 = v1.dot(side);
+		float c2 = v2.dot(side);
+		float weight = c2 / (c2 - c1);
+		*/
+		return vo1 + (vo2 - vo1) * t;
+	}
+
+	static VertexOut clipWPlane(const VertexOut& vo1, const VertexOut& vo2)
+	{
+		float t = (vo1.posH.w - clipW) / (vo1.posH.w - vo2.posH.w);
+		return vo1 + (vo2 - vo1) * t;
+	}
+
+	static bool inside(const Vector4f& pos, int side)
+	{
+		bool in = true;
+		switch (side)
+		{
+		case 0:
+		{
+			in = pos.x > -pos.w;
+			break;
+		}
+		case 1:
+		{
+			in = pos.x < pos.w;
+			break;
+		}
+		case 2:
+		{
+			in = pos.y < pos.w;
+			break;
+		}
+		case 3:
+		{
+			in = pos.y > -pos.w;
+
+			break;
+		}
+		case 4:
+		{
+			in = pos.z > -pos.w;
+			break;
+		}
+		case 5:
+		{
+			in = pos.z < pos.w;
+			break;
+		}
+		case 6:
+		{
+			in = pos.w > clipW;
+
+			break;
+		}
+		}
+		return in;
 	}
 };
 
