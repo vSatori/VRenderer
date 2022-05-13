@@ -2,31 +2,39 @@
 #define LOADBMP_IMPLEMENTATION
 #include "loadbmp.h"
 #include <algorithm>
+#include "tinyddsloader.h"
 Texture::Texture() : m_rowData(nullptr), m_width(0), m_height(0)
 {
 }
-Texture::Texture(const char * fileName)
+Texture::Texture(const char * fileName, bool isBmp)
 {
-	unsigned char* rowData;
-	loadbmp_decode_file(fileName, &rowData, &m_width, &m_height, LOADBMP_RGBA);
-	unsigned int* data = (unsigned int*)rowData;
-	m_components.resize(m_width * m_height);
-	for (int y = 0; y < m_height; ++y)
+	if (isBmp)
 	{
-		for (int x = 0; x < m_width; ++x)
+		unsigned char* rowData;
+		loadbmp_decode_file(fileName, &rowData, &m_width, &m_height, LOADBMP_RGBA);
+		unsigned int* data = (unsigned int*)rowData;
+		m_components.resize(m_width * m_height);
+		for (int y = 0; y < m_height; ++y)
 		{
-			int index = y * m_width + x;
-			unsigned int color = data[index];
+			for (int x = 0; x < m_width; ++x)
+			{
+				int index = y * m_width + x;
+				unsigned int color = data[index];
 
-			float r = ((float)((color << 8) >> 24)) / 255.f;
-			float g = ((float)((color << 16) >> 24)) / 255.f;
-			float b = ((float)((color << 24) >> 24)) / 255.f;
-			m_components[index] = { r, g, b };
+				float r = ((float)((color << 8) >> 24)) / 255.f;
+				float g = ((float)((color << 16) >> 24)) / 255.f;
+				float b = ((float)((color << 24) >> 24)) / 255.f;
+				m_components[index] = { r, g, b };
+			}
 		}
+		unsigned int size = m_width * m_height;
+		m_rowData = new unsigned int[size];
+		memcpy(m_rowData, data, size * sizeof(unsigned int));
 	}
-	unsigned int size = m_width * m_height;
-	m_rowData = new unsigned int[size];
-	memcpy(m_rowData, data, size * sizeof(unsigned int));
+	else
+	{
+
+	}
 }
 
 Texture::~Texture()
@@ -87,7 +95,6 @@ CubeMap::CubeMap(const std::vector<std::string>& files)
 	}
 }
 
-#include "Renderer.h"
 Vector3f CubeMap::sample(const Vector3f & dir)
 {
 	float absx = abs(dir.x);
@@ -236,4 +243,43 @@ unsigned int DynamicCubeMap::sample(const Vector3f & dir)
 
 	}
 	return m_textures[direction]->sampleValue(x, y);
+}
+
+DepthTexture::DepthTexture() : m_rowData(nullptr)
+{
+}
+
+DepthTexture::~DepthTexture()
+{
+	if (m_rowData)
+	{
+		delete[] m_rowData;
+	}
+}
+
+void DepthTexture::setRowData(float * data, unsigned int width, unsigned int height)
+{
+	if (m_rowData)
+	{
+		delete[] m_rowData;
+	}
+	m_width = width;
+	m_height = height;
+	unsigned int size = m_width * m_height;
+	m_rowData = new float[size];
+	memcpy(m_rowData, data, size * sizeof(float));
+
+
+
+}
+
+float DepthTexture::sampleValue(float u, float v)
+{
+	int x = u * m_width + 0.5;
+	int y = v * m_height + 0.5;
+	if (y >= m_height)
+	{
+		y = m_height - 1;
+	}
+	return m_rowData[y * m_width + x];
 }

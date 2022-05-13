@@ -8,12 +8,44 @@ struct Vector2f
 	{
 		return x * vec.y - y * vec.x;
 	}
+	Vector2f operator+(const Vector2f& vec)const
+	{
+		Vector2f res;
+		res.x = x + vec.x;
+		res.y = y + vec.y;
+		return res;
+	}
 	Vector2f operator-(const Vector2f& vec)const
 	{
 		Vector2f res;
 		res.x = x - vec.x;
 		res.y = y - vec.y;
 		return res;
+	}
+	Vector2f operator*(float t)const
+	{
+		Vector2f res;
+		res.x = x * t;
+		res.y = y * t;
+		return res;
+	}
+	Vector2f operator+=(const Vector2f& vec)
+	{
+		this->x += vec.x;
+		this->y += vec.y;
+		return *this;
+	}
+	Vector2f operator-=(const Vector2f& vec)
+	{
+		this->x -= vec.x;
+		this->y -= vec.y;
+		return *this;
+	}
+	Vector2f operator*=(float t)
+	{
+		this->x *= t;
+		this->y *= t;
+		return *this;
 	}
 	float x;
 	float y;
@@ -94,16 +126,16 @@ struct Vector3f
 	}
 	Vector3f operator-=(const Vector3f& vec)
 	{
-		this->x += vec.x;
-		this->y += vec.y;
-		this->z += vec.z;
+		this->x -= vec.x;
+		this->y -= vec.y;
+		this->z -= vec.z;
 		return *this;
 	}
 	Vector3f operator*=(const Vector3f& vec)
 	{
-		this->x += vec.x;
-		this->y += vec.y;
-		this->z += vec.z;
+		this->x *= vec.x;
+		this->y *= vec.y;
+		this->z *= vec.z;
 		return *this;
 	}
 	Vector3f operator*=(float w)
@@ -187,7 +219,16 @@ struct Vector4f
 			
 		return res;
 	}
+	Vector4f operator+(float v)const
+	{
+		Vector4f res;
+		res.x = x + v;
+		res.y = y + v;
+		res.z = z + v;
+		res.w = w + v;
 
+		return res;
+	}
 	Vector4f operator*(float v)const
 	{
 		Vector4f res;
@@ -198,12 +239,47 @@ struct Vector4f
 
 		return res;
 	}
-
-	Vector4f operator/=(float w)
+	Vector4f operator/(float v)const
 	{
-		x /= w;
-		y /= w;
-		z /= w;
+		Vector4f res;
+		res.x = x / v;
+		res.y = y / v;
+		res.z = z / v;
+		res.w = w / v;
+
+		return res;
+	}
+	Vector4f operator+=(const Vector4f& vec)
+	{
+		this->x += vec.x;
+		this->y += vec.y;
+		this->z += vec.z;
+		this->w += vec.w;
+		return *this;
+	}
+	Vector4f operator-=(const Vector4f& vec)
+	{
+		this->x -= vec.x;
+		this->y -= vec.y;
+		this->z -= vec.z;
+		this->w -= vec.w;
+		return *this;
+	}
+	Vector4f operator*=(float t)
+	{
+		this->x *= t;
+		this->y *= t;
+		this->z *= t;
+		this->w *= t;
+		return *this;
+	}
+
+	Vector4f operator/=(float t)
+	{
+		x /= t;
+		y /= t;
+		z /= t;
+		w /= t;
 		return *this;
 	}
 	float dot(const Vector4f& vec4) const
@@ -332,3 +408,11 @@ inline float radian(float angle)
 	return 3.1415926f / 180.f * angle;
 }
 
+inline Vector3f toVector(unsigned int value)
+{
+	Vector3f color;
+	color.x = ((float)((value << 8) >> 24)) / 255.f;
+	color.y = ((float)((value << 16) >> 24)) / 255.f;
+	color.z = ((float)((value << 24) >> 24)) / 255.f;
+	return color;
+}

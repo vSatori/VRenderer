@@ -1,10 +1,10 @@
 #pragma once
-#include "MathUtility.h"
 #include "Mesh.h"
 #include "VertexShader.h"
 #include "PixelShader.h"
 #include <algorithm>
 
+static unsigned int whiteValue = (255 << 16) + (255 << 8) + 255;
 enum class CullMode
 {
 	CULLFRONTFACE,CULLBACKFACE,CULLNONE
@@ -12,10 +12,15 @@ enum class CullMode
 
 enum class FillMode
 {
-	SOLID,WIREFRAME,SOLIDWITHWIREFRAME
+	SOLID,WIREFRAME,SOLIDWITHWIREFRAME,NONE
 };
 
 enum class DepthMode
+{
+
+};
+
+enum class BlendMode
 {
 
 };
@@ -25,18 +30,67 @@ class RenderContext
 public:
 	static CullMode cullMode;
 	static FillMode fillMode;
-	static DepthMode depthMode;
-	static Vector3f eyePos;
+	//static DepthMode depthMode;
+	static bool alphaBlending;
+	static bool drawColor;
 	static unsigned int* renderTarget;
 	static float* zbuffer;
-	static int width;
-	static int height;
+	static const int width = 1280;
+	static const int height = 720;
+	static Vector3f eyePos;
 	static float near;
 	static float far;
 	static VertexShader* vs;
 	static PixelShader* ps;
 	static const float clipW;
 public:
+	static void init()
+	{
+		cullMode = CullMode::CULLBACKFACE;
+		fillMode = FillMode::SOLID;
+		renderTarget = new unsigned int[width * height];
+		zbuffer = new float[width * height];
+		vs = nullptr;
+		ps = nullptr;
+	}
+	static void finalize()
+	{
+		if (renderTarget)
+		{
+			delete renderTarget;
+		}
+		if (zbuffer)
+		{
+			delete zbuffer;
+		}
+
+	}
+
+
+	static void clear()
+	{
+		//memset(renderTarget, 0, width * height * 4);
+		
+		//memset(zbuffer, 1, width * height * 4);
+		
+		for (int i = 0; i < height; ++i)
+		{
+			for (int j = 0; j < width; ++j)
+			{
+				renderTarget[i * width + j] = whiteValue;
+			}
+		}
+		
+		for (int i = 0; i < height; ++i)
+		{
+			for (int j = 0; j < width; ++j)
+			{
+				zbuffer[i * width + j] = 1.001f;
+			}
+		}
+		
+	}
+
 	static bool Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 	{
 		switch (cullMode)
@@ -135,25 +189,33 @@ public:
 				if (v1 * v2 >= 0 && v1 * v3 >= 0 && v2 * v3 >= 0)
 				{
 					Vector2f p{ x, y };
-					float areaA = (p - p2).corss(p3 - p2);
-					float areaB = (p - p3).corss(p1 - p3);
-					float areaC = (p - p1).corss(p2 - p1);
+					float areaA = ((p - p2).corss(p3 - p2));
+					float areaB = ((p - p3).corss(p1 - p3));
+					float areaC = ((p - p1).corss(p2 - p1));
 					float area = areaA + areaB + areaC;
 					float a = areaA / area;
 					float b = areaB / area;
 					float c = areaC / area;
 
 
-					float z = vo1.posH.w * a + vo2.posH.w * b + vo3.posH.w * c;
+					float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
+					float hz = 1.f / (a * z1 + b * z2 + c * z3);
+					VertexOut vout = (vo1 * (a * z1) + vo2 * (b * z2) + vo3 * (c * z3))  * hz;
+					
 					int index = width * y + x;
-					if (zbuffer[index] > z)
+					if (zbuffer[index] <= vout.posH.z)
 					{
 						continue;
 					}
-					float hz = 1.f / ((a * z1) + (b * z2) + (c * z3));
+					zbuffer[index] = vout.posH.z;
+					if (!drawColor)
+					{
+						continue;
+					}
 
-				    VertexOut vout = (vo1 * (a * z1) + vo2 * (b * z2) + vo3 * (c * z3)) * (1.f / hz);
-					Vector3f color = ps->execute(vout);
+				   
+				   vout.index = index;
+				   Vector3f color = ps->execute(vout);
 					
 					float* pc = (float*)&color;
 					for (int i = 0; i < 3; ++i)
@@ -167,7 +229,7 @@ public:
 					int green = color.y * 255;
 					int blue = color.z * 255;
 					unsigned int colorValue = (red << 16) + (green << 8) + blue;
-					zbuffer[index] = z ;
+					
 					renderTarget[index] = colorValue;
 				}
 
@@ -287,38 +349,38 @@ public:
 		{
 		case 0:
 		{
-			in = pos.x > -pos.w;
+			in = pos.x >= -pos.w;
 			break;
 		}
 		case 1:
 		{
-			in = pos.x < pos.w;
+			in = pos.x <= pos.w;
 			break;
 		}
 		case 2:
 		{
-			in = pos.y < pos.w;
+			in = pos.y <= pos.w;
 			break;
 		}
 		case 3:
 		{
-			in = pos.y > -pos.w;
+			in = pos.y >= -pos.w;
 
 			break;
 		}
 		case 4:
 		{
-			in = pos.z > -pos.w;
+			in = pos.z >= -pos.w;
 			break;
 		}
 		case 5:
 		{
-			in = pos.z < pos.w;
+			in = pos.z <= pos.w;
 			break;
 		}
 		case 6:
 		{
-			in = pos.w > clipW;
+			in = pos.w >= clipW;
 
 			break;
 		}
@@ -327,5 +389,5 @@ public:
 	}
 };
 
-const float RenderContext::clipW = 0.00001f;
+
 

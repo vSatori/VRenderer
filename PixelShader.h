@@ -1,75 +1,47 @@
 #pragma once
+#include <functional>
 #include "Mesh.h"
+#include "Light.h"
+
+
+
 using PSFunction = std::function<Vector3f(const VertexOut&)>;
-class PixelShader
+
+
+struct PixelShader
 {
 public:
-	Vector3f execute(const VertexOut& vout)
+	inline Vector3f execute(const VertexOut& vout)
 	{
 		return function(vout);
 	}
 public:
 	PSFunction function;
+	Vector3f eyePos;
 };
 
 struct GenericPixelShader : public PixelShader
 {
 public:
-	bool reflect;
-	std::weak_ptr<DynamicCubeMap> envCubeMap;
-	std::shared_ptr<Texture> texture;
-	std::vector<std::shared_ptr<Light>> lights;
+	bool reflect = false;
+	float alpha = 1.f;
+	Vector3f color; 
+	DynamicCubeMap* envCubeMap = nullptr;
+	Texture* texture = nullptr;
+	std::vector<Light*> lights;
+	std::vector<Matrix4> matLitViews;
+	std::vector<DepthTexture*> depthTextures;
 };
 
 struct SkyPixelShader : public PixelShader
 {
 public:
-	std::weak_ptr<CubeMap> cubeMap;
+	CubeMap* cubeMap = nullptr;
 };
 
-PSFunction makeGenericPSFunction(GenericPixelShader* shader)
-{
-	auto func = [shader](const VertexOut& vout)
-	{
-		Vector3f color;
-		Vector3f litColor;
-		if (shader->reflect)
-		{
-			auto cm = shader->envCubeMap.lock();
-			if (cm)
-			{
-				unsigned int value = cm->sample(vout.posW);
-				float r = ((float)((value << 8) >> 24)) / 255.f;
-				float g = ((float)((value << 16) >> 24)) / 255.f;
-				float b = ((float)((value << 24) >> 24)) / 255.f;
-				color = { r, g, b };
-			}
-		}
-		else
-		{
-			if (shader->texture)
-			{
-				color = shader->texture->sample(vout.vin.tex.x, vout.vin.tex.y);
-			}
-		}
+PSFunction makeGenericPSFunction(GenericPixelShader* shader);
 
-		for (const auto& light : shader->lights)
-		{
-			litColor += light->compute(RenderContext::eyePos, vout.posW, vout.normalW);
-		}
-		return color * litColor;
-	};
-	return func;
-}
 
-PSFunction makeSkyPSFunction(SkyPixelShader* shader)
-{
-	auto func = [shader](const VertexOut& vout)
-	{
-		Vector3f pos = vout.vin.pos;
-		pos.normalize();
-		return shader->cubeMap.lock()->sample(pos);
-	};
-	return func;
-}
+PSFunction makeSkyPSFunction(SkyPixelShader* shader);
+
 

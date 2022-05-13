@@ -8,7 +8,7 @@ class Texture
 {
 public:
 	Texture();
-	Texture(const char* fileName);
+	Texture(const char* fileName, bool isBmp = true);
 	~Texture();
 public:
 	void setRowData(unsigned int* data, unsigned int width, unsigned int height);
@@ -20,6 +20,20 @@ private:
 	unsigned int m_width;
 	unsigned int m_height;
 	unsigned int m_maxIndex;
+};
+
+class DepthTexture
+{
+public:
+	DepthTexture();
+	~DepthTexture();
+public:
+	void setRowData(float* data, unsigned int width, unsigned int height);
+	float sampleValue(float u, float v);
+private:
+	float* m_rowData;
+	unsigned int m_width;
+	unsigned int m_height;
 };
 
 
