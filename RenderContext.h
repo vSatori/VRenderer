@@ -153,13 +153,20 @@ public:
 
 	static void drawFragment(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
 	{
-		Vector2f p1{ (vo1.posH.x + 1.f) * 0.5f * width,  (1.f - vo1.posH.y) * 0.5f * height };
-		Vector2f p2{ (vo2.posH.x + 1.f) * 0.5f * width,  (1.f - vo2.posH.y) * 0.5f * height };
-		Vector2f p3{ (vo3.posH.x + 1.f) * 0.5f * width,  (1.f - vo3.posH.y) * 0.5f * height };
+		Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  int((1.f - vo1.posH.y) * 0.5f * height) };
+		Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  int((1.f - vo2.posH.y) * 0.5f * height) };
+		Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  int((1.f - vo3.posH.y) * 0.5f * height) };
 
 		int x1 = p1.x; int y1 = p1.y;
 		int x2 = p2.x; int y2 = p2.y;
 		int x3 = p3.x; int y3 = p3.y;
+
+		
+
+		if ((x1 == x2 && x2 == x3) || (y1 == y2 && y2 == y3))
+		{
+			return;
+		}
 
 		float z1 = 1.f / vo1.posH.w;
 		float z2 = 1.f / vo2.posH.w;
@@ -174,64 +181,59 @@ public:
 		{
 			for (int x = minx; x <= maxx; ++x)
 			{
-				int dx1 = x1 - x;
-				int dy1 = y1 - y;
-				int dx2 = x2 - x;
-				int dy2 = y2 - y;
-				int dx3 = x3 - x;
-				int dy3 = y3 - y;
 
-
-				long long v1 = dx1 * dy2 - dx2 * dy1;
-				long long v2 = dx2 * dy3 - dx3 * dy2;
-				long long v3 = dx3 * dy1 - dx1 * dy3;
-
-				if (v1 * v2 >= 0 && v1 * v3 >= 0 && v2 * v3 >= 0)
+				Vector2f p{ float(x) + 0.5f, float(y) + 0.5f };
+				float areaA = ((p - p2).corss(p3 - p2));
+				float areaB = ((p - p3).corss(p1 - p3));
+				float areaC = ((p - p1).corss(p2 - p1));
+				bool okA = areaA < 0.00001f;
+				bool okB = areaB < 0.00001f;
+				bool okC = areaC < 0.00001f;
+				if (!(okA && okB && okC))
 				{
-					Vector2f p{ x, y };
-					float areaA = ((p - p2).corss(p3 - p2));
-					float areaB = ((p - p3).corss(p1 - p3));
-					float areaC = ((p - p1).corss(p2 - p1));
-					float area = areaA + areaB + areaC;
-					float a = areaA / area;
-					float b = areaB / area;
-					float c = areaC / area;
-
-
-					float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
-					float hz = 1.f / (a * z1 + b * z2 + c * z3);
-					VertexOut vout = (vo1 * (a * z1) + vo2 * (b * z2) + vo3 * (c * z3))  * hz;
-					
-					int index = width * y + x;
-					if (zbuffer[index] <= vout.posH.z)
-					{
-						continue;
-					}
-					zbuffer[index] = vout.posH.z;
-					if (!drawColor)
-					{
-						continue;
-					}
-
-				   
-				   vout.index = index;
-				   Vector3f color = ps->execute(vout);
-					
-					float* pc = (float*)&color;
-					for (int i = 0; i < 3; ++i)
-					{
-						if (*(pc + i) > 1.f)
-						{
-							*(pc + i) = 1.f;
-						}
-					}
-					int red = color.x * 255;
-					int green = color.y * 255;
-					int blue = color.z * 255;
-					unsigned int colorValue = (red << 16) + (green << 8) + blue;
-					
-					renderTarget[index] = colorValue;
+					continue;
 				}
+				float area = areaA + areaB + areaC;
+				float a = areaA / area;
+				float b = areaB / area;
+				float c = areaC / area;
+
+
+				//float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
+				float hz = 1.f / (a * z1 + b * z2 + c * z3);
+				VertexOut vout = (vo1 * (a * z1) + vo2 * (b * z2) + vo3 * (c * z3)) * hz;
+
+				int index = width * y + x;
+				if (zbuffer[index] <= vout.posH.z)
+				{
+					continue;
+				}
+
+				zbuffer[index] = vout.posH.z;
+				if (!drawColor)
+				{
+					continue;
+				}
+
+
+				vout.index = index;
+				Vector3f color = ps->execute(vout);
+
+				float* pc = (float*)&color;
+				for (int i = 0; i < 3; ++i)
+				{
+					if (*(pc + i) > 1.f)
+					{
+						*(pc + i) = 1.f;
+					}
+				}
+				int red = color.x * 255;
+				int green = color.y * 255;
+				int blue = color.z * 255;
+				unsigned int colorValue = (red << 16) + (green << 8) + blue;
+
+				renderTarget[index] = colorValue;
+				//}
 
 
 			}

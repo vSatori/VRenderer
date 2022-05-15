@@ -28,9 +28,9 @@ public:
 	Vector3f color; 
 	DynamicCubeMap* envCubeMap = nullptr;
 	Texture* texture = nullptr;
-	std::vector<Light*> lights;
+	Light* light;
 	std::vector<Matrix4> matLitViews;
-	std::vector<DepthTexture*> depthTextures;
+	DepthTexture* depthTexture;
 };
 
 struct SkyPixelShader : public PixelShader

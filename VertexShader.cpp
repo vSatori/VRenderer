@@ -7,17 +7,11 @@ VSFunction makeGenericVSFunction(GenericVertexShader * shader)
 		VertexOut out;
 		out.vin = vin;
 		Vector4f posW = shader->world * vin.pos;
-		Vector4f posH = shader->projection * shader->view * posW;
+		Vector4f posV = shader->view * posW;
+		Vector4f posH = shader->projection * posV;
 		out.posW = { posW.x, posW.y, posW.z };
 		out.posH = posH;
-		/*
-		int size = shader->matLitViews.size();
-		out.litViewPoses.resize(size);
-		for (int i = 0; i < size; ++i)
-		{
-			out.litViewPoses[i] = shader->projection * shader->matLitViews[i] * posW;
-		}
-		*/
+	    out.depthPos = shader->shadowProjection * shader->matLitView * posW;
 		return out;
 	};
 	return func;
@@ -34,6 +28,21 @@ VSFunction makeSkyVSFunction(SkyVertexShader * shader)
 		Vector4f posH = shader->projection * shader->view * posW;
 		posH.z = posH.w;
 		return VertexOut{ vin, {posW.x, posW.y, posW.z}, posH };
+	};
+	return func;
+}
+
+VSFunction makeShadowMapVSFunction(ShadowMapVertexShader* shader)
+{
+	auto func = [shader](const Vertex& vin)
+	{
+		VertexOut out;
+		out.vin = vin;
+		Vector4f posW = shader->world * vin.pos;
+		Vector4f posH = shader->projection * shader->view * posW;
+		out.posW = { posW.x, posW.y, posW.z };
+		out.posH = posH;
+		return out;
 	};
 	return func;
 }

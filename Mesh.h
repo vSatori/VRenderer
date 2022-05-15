@@ -17,7 +17,7 @@ struct VertexOut
 	Vector4f posH;
 	Vector3f normalW;
 	unsigned int index;
-	//std::vector<Vector4f> litViewPoses;
+	Vector4f depthPos;
 	
 	VertexOut operator+(const VertexOut& vo)const
 	{
@@ -28,12 +28,7 @@ struct VertexOut
 		res.posW += vo.posW;
 		res.posH += vo.posH;
 		res.normalW += vo.normalW;
-		/*
-		for (int i = 0; i < litViewPoses.size(); ++i)
-		{
-			res.litViewPoses[i] += vo.litViewPoses[i];
-		}
-		*/
+		res.depthPos += vo.depthPos;
 		return res;
 	}
 
@@ -46,12 +41,7 @@ struct VertexOut
 		res.posW -= vo.posW;
 		res.posH -= vo.posH;
 		res.normalW -= vo.normalW;
-		/*
-		for (int i = 0; i < litViewPoses.size(); ++i)
-		{
-			res.litViewPoses[i] -= vo.litViewPoses[i];
-		}
-		*/
+		res.depthPos -= vo.depthPos;
 		return res;
 	}
 
@@ -64,12 +54,7 @@ struct VertexOut
 		vout.posW *= t;
 		vout.posH *= t;
 		vout.normalW *= t;
-		/*
-		for (int i = 0; i < litViewPoses.size(); ++i)
-		{
-			vout.litViewPoses[i] *= t;
-		}
-		*/
+		vout.depthPos *= t;	
 		return vout;
 	}
 	

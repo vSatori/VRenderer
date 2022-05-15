@@ -277,9 +277,5 @@ float DepthTexture::sampleValue(float u, float v)
 {
 	int x = u * m_width + 0.5;
 	int y = v * m_height + 0.5;
-	if (y >= m_height)
-	{
-		y = m_height - 1;
-	}
 	return m_rowData[y * m_width + x];
 }

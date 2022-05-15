@@ -2,7 +2,7 @@
 
 LightFunction makeComputeDirectLightFunction(DirectionalLight * light)
 {
-	auto func = [light](const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal)
+	auto func = [light](const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal, float shadow)
 	{
 		float dot = (light->direction * -1).dot(normal);
 		if (dot <= 0.f)
@@ -14,16 +14,16 @@ LightFunction makeComputeDirectLightFunction(DirectionalLight * light)
 		Vector3f reflectDir = (light->direction).reflect(normal);
 		float specu = pow(dot, light->specularFactor);
 		Vector3f ambientFinal = light->ambient * light->ambientFactor;
-		Vector3f diffuseFinal = light->diffuse * dot * light->diffuseFactor;
-		Vector3f specularFinal = light->specular * specu;
-		return ambientFinal + diffuseFinal + specularFinal;
+		Vector3f diffuseFinal = light->diffuse * dot * light->diffuseFactor * shadow;
+		Vector3f specularFinal = light->specular * specu * shadow;
+		return (ambientFinal + diffuseFinal + specularFinal);
 	};
 	return func;
 }
 
 LightFunction makeComputePointLightFunction(PointLight * light)
 {
-	auto func = [light](const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal)
+	auto func = [light](const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal, float shadow)
 	{
 		Vector3f litDir = light->pos - vertexPos;
 		float distance = litDir.length();
@@ -50,7 +50,7 @@ LightFunction makeComputePointLightFunction(PointLight * light)
 
 LightFunction makeComputeSpotLightFunction(SpotLight * light)
 {
-	auto func = [light](const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal)
+	auto func = [light](const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal, float shadow)
 	{
 		Vector3f litDir = light->pos - vertexPos;
 		float distance = litDir.length();

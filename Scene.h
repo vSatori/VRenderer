@@ -29,7 +29,7 @@ public:
 public:
 	virtual void render() = 0;
 	Matrix4 getProjectionMatrix();
-	Matrix4 getOrthogonalMatrix();
+	Matrix4 getOrthogonalMatrix(float w, float h, float n, float f);
 protected:
 	void drawMesh(const Mesh& mesh);
 public:
@@ -50,6 +50,7 @@ public:
 	virtual void render()override;
 private:
 	void render(bool drawRelect);
+	void renderShadow();
 
 private:
 	SkyBox m_sky;
@@ -62,7 +63,30 @@ private:
 	GenericPixelShader* m_spherePS;
 	SkyVertexShader* m_skyVS;
 	SkyPixelShader* m_skyPS;
-	std::vector<Light*> m_lights;
-	std::vector<DepthTexture*> m_depthTextures;
+	ShadowMapVertexShader* m_shadowVS;
+	Light* m_light;
+	DepthTexture* m_depthTexture;
+	Matrix4 m_mat;
+};
+
+class ShadowMappingScene : public Scene
+{
+public:
+	ShadowMappingScene();
+	~ShadowMappingScene();
+public:
+	virtual void render()override;
+private:
+	void renderShadow();
+	void renderScene();
+	Matrix4 getShadowProjectionMatrix(const Matrix4& matView);
+private:
+	Mesh m_sphere;
+	Mesh m_ground;
+	GenericVertexShader* m_sphereVS;
+	GenericPixelShader* m_spherePS;
+	ShadowMapVertexShader* m_shadowVS;
+	Light* m_light;
+	DepthTexture* m_depthTexture;
 };
 

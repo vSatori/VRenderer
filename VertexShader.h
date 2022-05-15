@@ -15,7 +15,7 @@ public:
 	Matrix4 world;
 	Matrix4 view;
 	Matrix4 projection;
-	std::vector<Matrix4> matLitViews;
+	Matrix4 matLitView;
 
 };
 
@@ -23,14 +23,23 @@ public:
 
 class GenericVertexShader : public VertexShader
 {
+public:
+	Matrix4 shadowProjection;
 };
 
 class SkyVertexShader : public VertexShader
 {
 };
 
+class ShadowMapVertexShader: public VertexShader
+{
+
+};
+
 
 VSFunction makeGenericVSFunction(GenericVertexShader* shader);
 
 VSFunction makeSkyVSFunction(SkyVertexShader* shader);
+
+VSFunction makeShadowMapVSFunction(ShadowMapVertexShader* shader);
 

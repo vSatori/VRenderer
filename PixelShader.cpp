@@ -3,20 +3,10 @@
 #include <qdebug.h>
 static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 {
-	if (pos.w < RenderContext::near)
-	{
-		return 0.f;
-	}
-	Vector4f projPos = pos / pos.w;
-	float x = (projPos.x + 1.f) * 0.5f;
-	float y = (projPos.y + 1.f) * 0.5f;
-	//float z = (projPos.z + 1.f) * 0.5f;
-	if (x < 0.f || y < 0.f || x > 1.f || y > 1.f)
-	{
-		return 0.f;
-	}
+	float x = (pos.x + 1.f) * 0.5f;
+	float y = (1.f - pos.y) * 0.5f;
 	float depth = tex->sampleValue(x,y);
-	return projPos.z - 0.005f < depth ? 1.f : 0.f;
+	return pos.z - 0.005f < depth ? 1.f : 0.f;
 }
 
 
@@ -48,11 +38,10 @@ PSFunction makeGenericPSFunction(GenericPixelShader * shader)
 				color = shader->color;
 			}
 		}
-		int size = shader->lights.size();
-		for (int i = 0; i < size; ++i)
+		if (shader->light)
 		{
-			Light* light = shader->lights[i];
-			litColor += light->compute(RenderContext::eyePos, vout.posW, vout.vin.normal);
+			float shadow = computeShadow(vout.depthPos, shader->depthTexture);
+			litColor += shader->light->compute(RenderContext::eyePos, vout.posW, vout.vin.normal, shadow);
 		}
 		color = color * litColor;
 		if (!RenderContext::alphaBlending)

@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 	RenderView view;
-	DynamicEnviromentMappingScene scene;
+	ShadowMappingScene scene;
 	view.setScene(&scene);
 	QTimer timer;
 	timer.setInterval(30);
@@ -29,5 +29,4 @@ int main(int argc, char *argv[])
 	view.renderScene();
 	timer.start();
     return a.exec();
-
 }

@@ -75,6 +75,8 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 	m_spherePS = new GenericPixelShader;
 	m_sphereVS->function = makeGenericVSFunction(m_sphereVS);
 	m_spherePS->function = makeGenericPSFunction(m_spherePS);
+	m_shadowVS = new ShadowMapVertexShader;
+	m_shadowVS->function = makeShadowMapVSFunction(m_shadowVS);
 	MeshFactory::createCube(m_sky, 1.f, 1.f, 1.f);
 	std::vector<std::string> files;
 	files.push_back("D:/Project/Renderer/skybox/skybox/left.bmp");
@@ -84,14 +86,14 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 	files.push_back("D:/Project/Renderer/skybox/skybox/back.bmp");
 	files.push_back("D:/Project/Renderer/skybox/skybox/front.bmp");
 	m_sky.cubeMap = std::make_unique<CubeMap>(files);
-	m_skyPS->cubeMap = m_sky.cubeMap.get();
+	//m_skyPS->cubeMap = m_sky.cubeMap.get();
 	MeshFactory::createSphere(m_reflectSphere, 2.f, 20, 20);
 	MeshFactory::createCube(m_ground, 5.f, 1.f, 5.f);
 	m_movingSpheres.resize(4);
 	for (int i = 0; i < 4; ++i)
 	{
 		MeshFactory::createSphere(m_movingSpheres[i], 1.f, 30, 30);
-		m_movingSpheres[i].texture = std::make_unique<Texture>("D:/Project/Renderer/skybox/skybox/left.bmp");
+		//m_movingSpheres[i].texture = std::make_unique<Texture>("D:/Project/Renderer/skybox/skybox/left.bmp");
 	}
 	m_spherePS->texture = m_movingSpheres[0].texture.get();
 	m_sphereColors.resize(4);
@@ -100,7 +102,6 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 	m_sphereColors[2] = { 0.f, 1.f, 0.f };
 	m_sphereColors[3] = { 0.f, 0.f, 1.f };
 
-	m_lights.resize(1);
 	DirectionalLight* left = new DirectionalLight;
 	left->function = makeComputeDirectLightFunction(left);
 	left->ambient = { 0.1f, 0.1f, 0.1f };
@@ -110,29 +111,13 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 	left->specular = { 0.1f, 0.1f, 0.1f };
 	left->specularFactor = 5.f;
 	left->direction = { 0.f, -1.f, 1.f };
-	left->pos = { 0.f, 20.f, -20.f };
+	left->pos = { 0.f, 100.f, -100.f };
 	Vector3f poses[] = { {10.f, 0.f, 0.f},{0.f, 0.f, -10.f},{0.f, 0.f, 10.f} };
 	Vector3f dirs[] = { {-1.f, 0.f, 0.f},{0.f, 0.f, 1.f}, {0.f, 0.f, -1.f} };
-	/*
-	for (int i = 1; i < 1; ++i)
-	{
-		DirectionalLight* light = new DirectionalLight;
-		memcpy(light, left, sizeof(DirectionalLight) - sizeof(light->function));
-		light->direction = dirs[i - 1];
-		light->pos = poses[i - 1];
-		light->function = makeComputeDirectLightFunction(light);
-		m_lights[i] = light;
-	}
-	*/
-	m_depthTextures.resize(4);
-	for (auto& tex : m_depthTextures)
-	{
-		tex = new DepthTexture;
-	}
-
-	m_lights[0] = left;
-	m_spherePS->lights = m_lights;
-	m_spherePS->depthTextures = m_depthTextures;
+	m_depthTexture = new DepthTexture;
+	m_light = left;
+	m_spherePS->light = m_light;
+	m_spherePS->depthTexture = m_depthTexture;
 	m_envCubeMap = std::make_unique<DynamicCubeMap>();
 	m_spherePS->envCubeMap = m_envCubeMap.get();
 
@@ -155,14 +140,8 @@ DynamicEnviromentMappingScene::~DynamicEnviromentMappingScene()
 	delete m_skyVS;
 	delete m_sphereVS;
 	delete m_spherePS;
-	for (Light* lit : m_lights)
-	{
-		delete lit;
-	}
-	for (DepthTexture* tex : m_depthTextures)
-	{
-		delete tex;
-	}
+	delete m_light;
+	delete m_depthTexture;
 }
 #include <qimage.h>
 #include <qapplication.h>
@@ -177,53 +156,46 @@ void DynamicEnviromentMappingScene::render()
 	unsigned int* frameCache = RenderContext::renderTarget;
 	Camera cameraCache = camera;
 	float fovCache = fov;
-
-	useOrthogonal = true;
-	int index = 0;
-	for (auto light : m_lights)
+	camera.target = { 0.f, 0.f, 0.f };
+	camera.pos = m_light->pos;
+	camera.useSphereMode = false;
+	RenderContext::drawColor = false;
+	renderShadow();
+	m_depthTexture->setRowData(RenderContext::zbuffer, RenderContext::width, RenderContext::height);
+	/*
+	unsigned int* buff = new unsigned int[RenderContext::width * RenderContext::height];
+	for (int h = 0; h < RenderContext::height; ++h)
 	{
-		camera.target = { 0.f, 0.f, 0.f };
-		camera.pos = light->pos;
-		camera.useSphereMode = false;
-		RenderContext::drawColor = false;
-		render(false);
-		m_depthTextures[index]->setRowData(RenderContext::zbuffer, RenderContext::width, RenderContext::height);
-		/*
-		unsigned int* buff = new unsigned int[RenderContext::width * RenderContext::height];
-		for (int h = 0; h < RenderContext::height; ++h)
+		for (int w = 0; w < RenderContext::width; ++w)
 		{
-			for (int w = 0; w < RenderContext::width; ++w)
+			int cur = h * RenderContext::width + w;
+			float depth = RenderContext::zbuffer[cur];
+			if (depth < 1.f)
 			{
-				int cur = h * RenderContext::width + w;
-				float depth = RenderContext::zbuffer[cur];
-				if (depth < 1.f)
-				{
-					depth *= 0.3f;
-				}
-				Vector3f color{ 1.f, 1.f, 1.f };
-				color *= depth;
-				float* p = (float*)&color;
-				for (int i = 0; i < 3; ++i)
-				{
-					if (*p > 1.f)
-					{
-						*p = 1.f;
-					}
-				}
-				int r = color.x * 255.f;
-				int g = color.y * 255.f;
-				int b = color.z * 255.f;
-				buff[cur] = (r << 16) + (g << 8) + b;
+				depth *= 0.3f;
 			}
+			Vector3f color{ 1.f, 1.f, 1.f };
+			color *= depth;
+			float* p = (float*)&color;
+			for (int i = 0; i < 3; ++i)
+			{
+				if (*p > 1.f)
+				{
+					*p = 1.f;
+				}
+			}
+			int r = color.x * 255.f;
+			int g = color.y * 255.f;
+			int b = color.z * 255.f;
+			buff[cur] = (r << 16) + (g << 8) + b;
 		}
-
-		QImage image((unsigned char*)buff, RenderContext::width, RenderContext::height, QImage::Format::Format_RGB32);
-		image.save("D:/depth.jpg");
-		exit(0);
-		*/
-		++index;
 	}
-	useOrthogonal = false;
+
+	QImage image((unsigned char*)buff, RenderContext::width, RenderContext::height, QImage::Format::Format_RGB32);
+	image.save("D:/depth.jpg");
+	exit(0);
+	*/
+
 	RenderContext::drawColor = true;
 	/*
 	camera.useSphereMode = false;
@@ -262,33 +234,20 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	RenderContext::eyePos = camera.pos;
 	RenderContext::cullMode = CullMode::CULLBACKFACE;
 	Matrix4 world;
-	Matrix4 projection;
-	if (useOrthogonal)
-	{
-		projection = getProjectionMatrix();
-	}
-	else
-	{
-		projection = getProjectionMatrix();
-	}
-	
+	Matrix4 projection = getProjectionMatrix();
 	m_sphereVS->view = camera.viewMat;
 	m_sphereVS->projection = projection;
 	m_spherePS->eyePos = camera.pos;
 	Camera tempCamera = camera;
 	tempCamera.useSphereMode = false;
 	tempCamera.target = { 0.f, 0.f, 0.f };
-	int size = m_lights.size();
-	m_sphereVS->matLitViews.resize(size);
-	for (int i = 0; i < size; ++i)
-	{
-		tempCamera.pos = m_lights[i]->pos;
-		tempCamera.update();
-		m_sphereVS->matLitViews[i] = tempCamera.viewMat;
-	}
 	
+	tempCamera.pos = m_light->pos;
+	tempCamera.update();
+	m_sphereVS->matLitView = tempCamera.viewMat;
+
+	m_sphereVS->shadowProjection = m_mat;
 	
-	//..
 	RenderContext::vs = m_sphereVS;
 	RenderContext::ps = m_spherePS;
 	world.m[1][3] = -1.7f;
@@ -330,6 +289,37 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	//drawMesh(m_sky);
 }
 
+void DynamicEnviromentMappingScene::renderShadow()
+{
+	RenderContext::clear();
+	camera.update();
+	RenderContext::eyePos = camera.pos;
+	RenderContext::cullMode = CullMode::CULLBACKFACE;
+	Matrix4 world;
+	Matrix4 projection;
+	Vector3f center = { 0.f, 0.f, 0.f };
+	Vector4f centerView = camera.viewMat * center;
+	float n = centerView.z - 3;
+	float f = centerView.z + 3;
+	projection = getOrthogonalMatrix(10.f, 8.f, n, f);
+	m_mat = projection;
+	m_shadowVS->view = camera.viewMat;
+	m_shadowVS->projection = projection;
+	RenderContext::vs = m_shadowVS;
+	world.m[1][3] = -1.7f;
+	m_shadowVS->world = world;
+	drawMesh(m_ground);
+	for (int index = 0; index < m_movingSpheres.size(); ++index)
+	{
+		const auto& movingSphere = m_movingSpheres[index];
+		world.init();
+		m_sphereVS->world = world;
+		m_spherePS->color = m_sphereColors[index];
+		drawMesh(movingSphere);
+		break;
+	}
+}
+
 Scene::Scene()
 {
 }
@@ -345,20 +335,136 @@ Matrix4 Scene::getProjectionMatrix()
 	float ratio = (float)RenderContext::width / (float)RenderContext::height;
 	mat.m[0][0] = 1.f / (ratio * tanVar);
 	mat.m[1][1] = 1.f / tanVar;
-	mat.m[2][2] = (farPlane + nearPlane) / (farPlane - nearPlane);
+	mat.m[2][2] = farPlane / (farPlane - nearPlane);
 	mat.m[2][3] = nearPlane * farPlane / (nearPlane - farPlane);
 	mat.m[3][2] = 1;
 	mat.m[3][3] = 0;
 	return mat;
 }
 
-Matrix4 Scene::getOrthogonalMatrix()
+Matrix4 Scene::getOrthogonalMatrix(float w, float h, float n, float f)
 {
 	Matrix4 mat;
-
-	mat.m[2][2] = 2.f / (farPlane - nearPlane);
-	mat.m[2][3] = (nearPlane + farPlane) / (nearPlane - farPlane);
-	mat.m[3][3] = 1;
+	mat.m[0][0] = 2.f / w;
+	mat.m[1][1] = 2.f / h;
+	mat.m[2][2] = 1.f / (f - n);
+	mat.m[2][3] = n / (n - f);
 	return mat;
 }
 
+ShadowMappingScene::ShadowMappingScene()
+{
+	m_sphereVS = new GenericVertexShader;
+	m_spherePS = new GenericPixelShader;
+	m_sphereVS->function = makeGenericVSFunction(m_sphereVS);
+	m_spherePS->function = makeGenericPSFunction(m_spherePS);
+	m_shadowVS = new ShadowMapVertexShader;
+	m_shadowVS->function = makeShadowMapVSFunction(m_shadowVS);
+	MeshFactory::createSphere(m_sphere, 1.f, 30, 30);
+	MeshFactory::createCube(m_ground, 5.f, 1.f, 5.f);
+	DirectionalLight* left = new DirectionalLight;
+	left->function = makeComputeDirectLightFunction(left);
+	left->ambient = { 0.1f, 0.1f, 0.1f };
+	left->ambientFactor = 1.f;
+	left->diffuse = { 0.5f, 0.5f, 0.5f };
+	left->diffuseFactor = 1.f;
+	left->specular = { 0.1f, 0.1f, 0.1f };
+	left->specularFactor = 5.f;
+	left->direction = { 0.f, -1.f, 1.f };
+	left->pos = { 0.f, 100.f, -100.f };
+	Vector3f poses[] = { {10.f, 0.f, 0.f},{0.f, 0.f, -10.f},{0.f, 0.f, 10.f} };
+	Vector3f dirs[] = { {-1.f, 0.f, 0.f},{0.f, 0.f, 1.f}, {0.f, 0.f, -1.f} };
+	m_depthTexture = new DepthTexture;
+	m_light = left;
+	m_spherePS->light = m_light;
+	m_spherePS->depthTexture = m_depthTexture;
+
+	nearPlane = 1.f;
+	farPlane = 1000.f;
+	RenderContext::near = nearPlane;
+	RenderContext::far = farPlane;
+	fov = 90.f;
+
+	camera.useSphereMode = true;
+	camera.radius = 10.f;
+	camera.pos = { 0.f, 0.f, -5.f };
+	camera.target = { 0.f, 0.f, 0.f };
+}
+
+ShadowMappingScene::~ShadowMappingScene()
+{
+}
+
+void ShadowMappingScene::render()
+{
+	Camera cameraCache = camera;
+	float fovCache = fov;
+	camera.target = { 0.f, 0.f, 0.f };
+	camera.pos = m_light->pos;
+	camera.useSphereMode = false;
+	RenderContext::drawColor = false;
+	renderShadow();
+	m_depthTexture->setRowData(RenderContext::zbuffer, RenderContext::width, RenderContext::height);
+	RenderContext::drawColor = true;
+	camera = cameraCache;
+	fov = fovCache;
+	renderScene();
+}
+
+void ShadowMappingScene::renderShadow()
+{
+	RenderContext::clear();
+	camera.update();
+	RenderContext::eyePos = camera.pos;
+	RenderContext::cullMode = CullMode::CULLBACKFACE;
+	Matrix4 world;
+	Matrix4 projection;
+	Vector3f center = { 0.f, 0.f, 0.f };
+	projection = getShadowProjectionMatrix(camera.viewMat);
+	m_shadowVS->view = camera.viewMat;
+	m_shadowVS->projection = projection;
+	RenderContext::vs = m_shadowVS;
+	world.m[1][3] = -1.7f;
+	m_shadowVS->world = world;
+	drawMesh(m_ground);
+	m_shadowVS->world.init();
+	drawMesh(m_sphere);
+}
+
+void ShadowMappingScene::renderScene()
+{
+	RenderContext::clear();
+	camera.update();
+	RenderContext::eyePos = camera.pos;
+	RenderContext::cullMode = CullMode::CULLBACKFACE;
+	Matrix4 world;
+	Matrix4 projection = getProjectionMatrix();
+	m_sphereVS->view = camera.viewMat;
+	m_sphereVS->projection = projection;
+	m_spherePS->eyePos = camera.pos;
+	Camera tempCamera = camera;
+	tempCamera.useSphereMode = false;
+	tempCamera.target = { 0.f, 0.f, 0.f };
+	tempCamera.pos = m_light->pos;
+	tempCamera.update();
+	m_sphereVS->matLitView = tempCamera.viewMat;
+	m_sphereVS->shadowProjection = getShadowProjectionMatrix(tempCamera.viewMat);
+	RenderContext::vs = m_sphereVS;
+	RenderContext::ps = m_spherePS;
+	world.m[1][3] = -1.7f;
+	m_sphereVS->world = world;
+	m_spherePS->color = Vector3f{ 0.9f, 0.9f, 0.9f };
+	drawMesh(m_ground);
+	m_sphereVS->world.init();
+	m_spherePS->color = Vector3f{ 1.f, 0.f, 0.f };
+	drawMesh(m_sphere);
+}
+
+Matrix4 ShadowMappingScene::getShadowProjectionMatrix(const Matrix4& matView)
+{
+	Vector3f center{0.f, 0.f, 0.f};
+	Vector4f centerView = matView * center;
+	float n = centerView.z - 3;
+	float f = centerView.z + 3;
+	return getOrthogonalMatrix(10.f, 8.f, n, f);
+}

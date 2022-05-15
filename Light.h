@@ -3,15 +3,15 @@
 #include <functional>
 
 
-using LightFunction = std::function<Vector3f(const Vector3f&, const Vector3f&, const Vector3f&)>;
+using LightFunction = std::function<Vector3f(const Vector3f&, const Vector3f&, const Vector3f&, float shadow)>;
 
 struct Light
 {
 
 public:
-	Vector3f compute(const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal)
+	Vector3f compute(const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal, float shadow)
 	{
-		return function(eye, vertexPos, normal);
+		return function(eye, vertexPos, normal, shadow);
 	}
 public:
 	Vector3f ambient;
