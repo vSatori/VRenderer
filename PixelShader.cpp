@@ -1,12 +1,12 @@
 #include "PixelShader.h"
 #include "RenderContext.h"
-#include <qdebug.h>
+
 static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 {
 	float x = (pos.x + 1.f) * 0.5f;
 	float y = (1.f - pos.y) * 0.5f;
 	float depth = tex->sampleValue(x,y);
-	return pos.z - 0.005f < depth ? 1.f : 0.f;
+	return pos.z - 0.05f < depth ? 1.f : 0.f;
 }
 
 
@@ -40,7 +40,13 @@ PSFunction makeGenericPSFunction(GenericPixelShader * shader)
 		}
 		if (shader->light)
 		{
-			float shadow = computeShadow(vout.depthPos, shader->depthTexture);
+
+			float shadow = 1.f;
+			if (shader->depthTexture)
+			{
+				shadow = computeShadow(vout.depthPos, shader->depthTexture);
+			}
+			
 			litColor += shader->light->compute(RenderContext::eyePos, vout.posW, vout.vin.normal, shadow);
 		}
 		color = color * litColor;

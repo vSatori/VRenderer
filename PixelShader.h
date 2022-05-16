@@ -30,7 +30,7 @@ public:
 	Texture* texture = nullptr;
 	Light* light;
 	std::vector<Matrix4> matLitViews;
-	DepthTexture* depthTexture;
+	DepthTexture* depthTexture = nullptr;
 };
 
 struct SkyPixelShader : public PixelShader

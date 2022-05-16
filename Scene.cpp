@@ -2,6 +2,7 @@
 #include "RenderContext.h"
 #include "MeshFactory.h"
 #include <qdebug.h>
+#include "Pmx.h"
 void Scene::drawMesh(const Mesh & mesh)
 {
 	int vertexSize = mesh.vertices.size();
@@ -372,8 +373,6 @@ ShadowMappingScene::ShadowMappingScene()
 	left->specularFactor = 5.f;
 	left->direction = { 0.f, -1.f, 1.f };
 	left->pos = { 0.f, 100.f, -100.f };
-	Vector3f poses[] = { {10.f, 0.f, 0.f},{0.f, 0.f, -10.f},{0.f, 0.f, 10.f} };
-	Vector3f dirs[] = { {-1.f, 0.f, 0.f},{0.f, 0.f, 1.f}, {0.f, 0.f, -1.f} };
 	m_depthTexture = new DepthTexture;
 	m_light = left;
 	m_spherePS->light = m_light;
@@ -397,6 +396,23 @@ ShadowMappingScene::~ShadowMappingScene()
 
 void ShadowMappingScene::render()
 {
+	frameFactor += 2;
+	if (frameFactor > 360)
+	{
+		frameFactor = 0;
+	}
+	//frameFactor = 45;
+	float x = cosf(radian(frameFactor)) * 10.f;
+	float y = 10.f;
+	float z = sinf(radian(frameFactor)) * 10.f;
+	//x = 0;
+	//y = 100;
+	//z = -100;
+	m_light->pos = { x, y, z };
+	m_light->direction = { -x, -y, -z };
+	m_light->direction.normalize();
+
+
 	Camera cameraCache = camera;
 	float fovCache = fov;
 	camera.target = { 0.f, 0.f, 0.f };
@@ -405,6 +421,8 @@ void ShadowMappingScene::render()
 	RenderContext::drawColor = false;
 	renderShadow();
 	m_depthTexture->setRowData(RenderContext::zbuffer, RenderContext::width, RenderContext::height);
+
+
 	RenderContext::drawColor = true;
 	camera = cameraCache;
 	fov = fovCache;
@@ -466,5 +484,87 @@ Matrix4 ShadowMappingScene::getShadowProjectionMatrix(const Matrix4& matView)
 	Vector4f centerView = matView * center;
 	float n = centerView.z - 3;
 	float f = centerView.z + 3;
-	return getOrthogonalMatrix(10.f, 8.f, n, f);
+	return getOrthogonalMatrix(20.f, 16.f, n, f);
+}
+
+PmxModelScene::PmxModelScene()
+{
+	const char *filename = "D:/Project/other/models/bachong/∞À÷ÿ…Ò◊”.pmx";
+	pmx::PmxModel model;
+	std::ifstream stream = std::ifstream(filename, std::ios_base::binary);
+	model.Read(&stream);
+	stream.close();
+	pmx::PmxVertex* vertices = model.vertices.get();
+	m_keqing.vertices.resize(model.vertex_count);
+	for (int i = 0; i < model.vertex_count; ++i)
+	{
+		pmx::PmxVertex& pv = vertices[i];
+		Vertex& vertex = m_keqing.vertices[i];
+		memcpy(&vertex.pos, pv.positon, sizeof(float) * 3);
+		memcpy(&vertex.normal, pv.normal, sizeof(float) * 3);
+		memcpy(&vertex.tex, pv.uv, sizeof(float) * 2);
+	}
+	m_keqing.indices.resize(model.index_count / 3);
+	int* indices = model.indices.get();
+	for (int i = 0; i < model.index_count / 3; ++i)
+	{
+		Vector3i& index = m_keqing.indices[i];
+		index.u = indices[i * 3 + 0];
+		index.v = indices[i * 3 + 1];
+		index.w = indices[i * 3 + 2];
+	}
+	
+	
+
+	nearPlane = 0.1f;
+	farPlane = 1000.f;
+	RenderContext::near = nearPlane;
+	RenderContext::far = farPlane;
+	camera.useSphereMode = true;
+	camera.pitch = 0.f;
+	camera.yaw = -90.f;
+	camera.radius = 20;
+	camera.target = { 0.f, 10.f, 0.f };
+	fov = 60.f;
+
+	m_light = new DirectionalLight;
+	m_light->function = makeComputeDirectLightFunction(m_light);
+	m_light->ambient = { 0.1f, 0.1f, 0.1f };
+	m_light->ambientFactor = 1.f;
+	m_light->diffuse = { 0.5f, 0.5f, 0.5f };
+	m_light->diffuseFactor = 1.f;
+	m_light->specular = { 0.1f, 0.1f, 0.1f };
+	m_light->specularFactor = 5.f;
+	m_light->direction = { 0.f, -1.f, 1.f };
+	m_light->pos = { 0.f, 100.f, -100.f };
+
+	m_VS = new GenericVertexShader;
+	m_VS->function = makeGenericVSFunction(m_VS);
+	
+
+
+
+	m_PS = new GenericPixelShader;
+	m_PS->function = makeGenericPSFunction(m_PS);
+	m_PS->color = { 0.f, 0.7f, 1.f };
+	m_PS->light = m_light;
+	
+	RenderContext::vs = m_VS;
+	RenderContext::ps = m_PS;
+
+	RenderContext::cullMode = CullMode::CULLBACKFACE;
+	RenderContext::fillMode = FillMode::SOLID;
+    
+}
+
+void PmxModelScene::render()
+{
+	RenderContext::clear();
+	camera.update();
+	RenderContext::eyePos = camera.pos;
+	m_VS->projection = getProjectionMatrix();
+	m_VS->view = camera.viewMat;
+	drawMesh(m_keqing);
+
+	
 }

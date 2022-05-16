@@ -199,17 +199,18 @@ public:
 				float c = areaC / area;
 
 
-				//float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
+				float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
 				float hz = 1.f / (a * z1 + b * z2 + c * z3);
 				VertexOut vout = (vo1 * (a * z1) + vo2 * (b * z2) + vo3 * (c * z3)) * hz;
+				//VertexOut vout = vo1 * a + vo2 * b + vo3 * c;
 
 				int index = width * y + x;
-				if (zbuffer[index] <= vout.posH.z)
+				if (zbuffer[index] <= z)
 				{
 					continue;
 				}
 
-				zbuffer[index] = vout.posH.z;
+				zbuffer[index] = z;
 				if (!drawColor)
 				{
 					continue;

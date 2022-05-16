@@ -86,7 +86,22 @@ private:
 	GenericVertexShader* m_sphereVS;
 	GenericPixelShader* m_spherePS;
 	ShadowMapVertexShader* m_shadowVS;
-	Light* m_light;
+	DirectionalLight* m_light;
 	DepthTexture* m_depthTexture;
+	Matrix4 m_lightWorld;
+	Vector3f m_lightPosition;
+};
+
+class PmxModelScene : public Scene
+{
+public:
+	PmxModelScene();
+public:
+	virtual void render()override;
+private:
+	Mesh m_keqing;
+	GenericPixelShader* m_PS;
+	GenericVertexShader* m_VS;
+	DirectionalLight* m_light;
 };
 

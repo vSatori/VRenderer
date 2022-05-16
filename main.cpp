@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 	RenderView view;
-	ShadowMappingScene scene;
+	PmxModelScene scene;
 	view.setScene(&scene);
 	QTimer timer;
 	timer.setInterval(30);
