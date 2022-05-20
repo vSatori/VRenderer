@@ -66,9 +66,9 @@ public:
 
 		for (int i = 0; i < 12; ++i)
 		{
-			indices[i].u = i * 3 + 0;
-			indices[i].v = i * 3 + 1;
-			indices[i].w = i * 3 + 2;
+			indices[i].x = i * 3 + 0;
+			indices[i].y = i * 3 + 1;
+			indices[i].z = i * 3 + 2;
 		}
 		for (int i = 0; i < 12; ++i)
 		{
@@ -137,13 +137,13 @@ public:
 			{
 				Vector3i index1;
 				Vector3i index2;
-				index1.u = (i - 1) * (slice + 1) + j;
-				index1.v = (i - 1) * (slice + 1) + j % (slice + 1) + 1;
-				index1.w = i * (slice + 1) + j % (slice + 1) + 1;
+				index1.x = (i - 1) * (slice + 1) + j;
+				index1.y = (i - 1) * (slice + 1) + j % (slice + 1) + 1;
+				index1.z = i * (slice + 1) + j % (slice + 1) + 1;
 
-				index2.u = i * (slice + 1) + j % (slice + 1) + 1;
-				index2.v = i * (slice + 1) + j;
-				index2.w = (i - 1) * (slice + 1) + j;
+				index2.x = i * (slice + 1) + j % (slice + 1) + 1;
+				index2.y = i * (slice + 1) + j;
+				index2.z = (i - 1) * (slice + 1) + j;
 				
 				mesh.indices.push_back(index1);
 				mesh.indices.push_back(index2);
@@ -154,9 +154,9 @@ public:
 			for (int j = 1; j <= slice; ++j)
 			{
 				Vector3i index;
-				index.u = (level - 2) * (slice + 1) + j;
-				index.v = (level - 2) * (slice + 1) + j % (slice + 1) + 1;
-				index.w = (level - 1) * (slice + 1) + 1;
+				index.x = (level - 2) * (slice + 1) + j;
+				index.y = (level - 2) * (slice + 1) + j % (slice + 1) + 1;
+				index.z = (level - 1) * (slice + 1) + 1;
 				mesh.indices.push_back(index);
 			}
 		}

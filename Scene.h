@@ -4,22 +4,6 @@
 #include "Light.h"
 #include "VertexShader.h"
 #include "PixelShader.h"
-struct Light;
-struct SkyBox;
-/*
-struct Scene
-{
-public:
-	std::vector<Mesh> meshes;
-	std::vector<Mesh> reflectMeshes;
-	std::vector<Light> lights;
-	std::unique_ptr<SkyBox> sky;
-	std::unique_ptr<DynamicCubeMap> envCubeMap;
-	Camera camera;
-	float nearPlane;
-	float farPlane;
-};
-*/
 
 class Scene
 {
@@ -32,6 +16,7 @@ public:
 	Matrix4 getOrthogonalMatrix(float w, float h, float n, float f);
 protected:
 	void drawMesh(const Mesh& mesh);
+	void drawMesh(const Mesh& mesh, const std::vector<VertexOut>& vertexBuff);
 public:
 	Camera camera;
 	float nearPlane;
@@ -50,23 +35,17 @@ public:
 	virtual void render()override;
 private:
 	void render(bool drawRelect);
-	void renderShadow();
-
 private:
 	SkyBox m_sky;
 	std::unique_ptr<DynamicCubeMap> m_envCubeMap;
 	std::vector<Mesh> m_movingSpheres;
 	std::vector<Vector3f> m_sphereColors;
 	Mesh m_reflectSphere;
-	Mesh m_ground;
 	GenericVertexShader* m_sphereVS;
 	GenericPixelShader* m_spherePS;
 	SkyVertexShader* m_skyVS;
 	SkyPixelShader* m_skyPS;
-	ShadowMapVertexShader* m_shadowVS;
 	Light* m_light;
-	DepthTexture* m_depthTexture;
-	Matrix4 m_mat;
 };
 
 class ShadowMappingScene : public Scene
@@ -99,7 +78,7 @@ public:
 public:
 	virtual void render()override;
 private:
-	Mesh m_keqing;
+	std::vector<Mesh> m_keqing;
 	GenericPixelShader* m_PS;
 	GenericVertexShader* m_VS;
 	DirectionalLight* m_light;

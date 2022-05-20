@@ -545,7 +545,7 @@ namespace pmx
 		this->textures = std::make_unique<utfstring[]>(texture_count);
 		for (int i = 0; i < texture_count; i++)
 		{
-			std::wstring str = ReadString(stream, setting.encoding);
+			//std::wstring str = ReadString(stream, setting.encoding);
 			this->textures[i] = ReadString(stream, setting.encoding);
 		}
 

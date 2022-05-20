@@ -1,61 +1,58 @@
 #pragma once
 #include <vector>
-#include "MathUtility.h"
+#include "MathUtil.h"
 #include "Texture.h"
 #include <memory>
 struct Vertex
 {
-	Vector3f pos;
-	Vector3f normal;
-	Vector2f tex;
+	Vector3f pos{ 0.f, 0.f };
+	Vector3f normal{ 0.f, 0.f };
+	Vector2f tex{ 0.f, 0.f };
 };
 
 struct VertexOut
 {
-	Vertex vin;
+	Vector2f uv;
+	Vector3f posM;
 	Vector3f posW;
-	Vector4f posH;
 	Vector3f normalW;
-	unsigned int index;
-	Vector4f depthPos;
+	Vector4f posH;
+	Vector4f posD;
 	
 	VertexOut operator+(const VertexOut& vo)const
 	{
 		VertexOut res = *this;
-		res.vin.pos += vo.vin.pos;
-		res.vin.normal += vo.vin.normal;
-		res.vin.tex += vo.vin.tex;
+		res.uv += vo.uv;
+		res.posM += vo.posM;
 		res.posW += vo.posW;
 		res.posH += vo.posH;
+		res.posD += vo.posD;
 		res.normalW += vo.normalW;
-		res.depthPos += vo.depthPos;
 		return res;
 	}
 
 	VertexOut operator-(const VertexOut& vo)const
 	{
 		VertexOut res = *this;
-		res.vin.pos -= vo.vin.pos;
-		res.vin.normal -= vo.vin.normal;
-		res.vin.tex -= vo.vin.tex;
+		res.uv -= vo.uv;
+		res.posM -= vo.posM;
 		res.posW -= vo.posW;
 		res.posH -= vo.posH;
+		res.posD -= vo.posD;
 		res.normalW -= vo.normalW;
-		res.depthPos -= vo.depthPos;
 		return res;
 	}
 
 	VertexOut operator*(float t)const
 	{
-		VertexOut vout = *this;
-		vout.vin.pos *= t;
-		vout.vin.normal *= t;
-		vout.vin.tex *= t;
-		vout.posW *= t;
-		vout.posH *= t;
-		vout.normalW *= t;
-		vout.depthPos *= t;	
-		return vout;
+		VertexOut res = *this;
+		res.uv *= t;
+		res.posM *= t;
+		res.posW *= t;
+		res.posH *= t;
+		res.posD *= t;
+		res.normalW *= t;
+		return res;
 	}
 	
 };

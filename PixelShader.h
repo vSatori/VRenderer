@@ -8,12 +8,19 @@
 using PSFunction = std::function<Vector3f(const VertexOut&)>;
 
 
+
+
 struct PixelShader
 {
 public:
 	inline Vector3f execute(const VertexOut& vout)
 	{
 		return function(vout);
+	}
+	inline Vector3f getColor(const VertexOut& out)
+	{
+		Vector3f color{ 0.f, 1.f, 1.f };
+		return color;
 	}
 public:
 	PSFunction function;

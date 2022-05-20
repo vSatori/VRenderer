@@ -2,7 +2,7 @@
 
 
 
-#include "MathUtility.h"
+#include "MathUtil.h"
 struct Particle
 {
 	Vector3f pos;

@@ -1,5 +1,5 @@
 #pragma once
-#include "MathUtility.h"
+#include "MathUtil.h"
 struct Camera
 {
 public:

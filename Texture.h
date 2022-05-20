@@ -1,5 +1,5 @@
 #pragma once
-#include "MathUtility.h"
+#include "MathUtil.h"
 #include <vector>
 #include <string>
 #include <map>
@@ -14,6 +14,8 @@ public:
 	void setRowData(unsigned int* data, unsigned int width, unsigned int height);
 	Vector3f sample(float u, float v);
 	unsigned int sampleValue(float u, float v);
+private:
+	void fillData(unsigned char* data, int comp = 4);
 private:
 	std::vector<Vector3f> m_components;
 	unsigned int* m_rowData;

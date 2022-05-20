@@ -25,6 +25,19 @@ enum class BlendMode
 
 };
 
+
+typedef void(*FragmentLerpFunction)(VertexOut& vout, const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3, float a, float b, float c);
+
+void genericLerpFunction(VertexOut& vout, const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3, float a, float b, float c);
+
+void CubeMapLerpFunction(VertexOut& vout, const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3, float a, float b, float c);
+
+void ModelLerpFunction(VertexOut& vout, const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3, float a, float b, float c);
+
+void ModelLerpFunction(VertexOut& vout, const VertexOut& vo1, const VertexOut& vo2, float t, float hz1, float hz2);
+
+void ModelLerpFunction(VertexOut& vout, const VertexOut& vo1, const VertexOut& vo2, float t);
+
 class RenderContext
 {
 public:
@@ -33,16 +46,19 @@ public:
 	//static DepthMode depthMode;
 	static bool alphaBlending;
 	static bool drawColor;
+	static bool posArea;
 	static unsigned int* renderTarget;
 	static float* zbuffer;
 	static const int width = 1280;
 	static const int height = 720;
 	static Vector3f eyePos;
-	static float near;
-	static float far;
+	static float nearPlane;
+	static float farPlane;
 	static VertexShader* vs;
 	static PixelShader* ps;
+	static FragmentLerpFunction  lerpFunc;
 	static const float clipW;
+	static unsigned int currentPixelIndex;
 public:
 	static void init()
 	{
@@ -116,10 +132,6 @@ public:
 
 	static bool checkClipping(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3)
 	{
-		if (v1.w < near || v2.w < near || v3.w < near)
-		{
-			return true;
-		}
 		if (v1.x + v1.w < 0 || v2.x + v2.w < 0 || v3.x + v3.w < 0)
 		{
 			return true;
@@ -151,95 +163,13 @@ public:
 		return false;
 	}
 
-	static void drawFragment(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
-	{
-		Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  int((1.f - vo1.posH.y) * 0.5f * height) };
-		Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  int((1.f - vo2.posH.y) * 0.5f * height) };
-		Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  int((1.f - vo3.posH.y) * 0.5f * height) };
-
-		int x1 = p1.x; int y1 = p1.y;
-		int x2 = p2.x; int y2 = p2.y;
-		int x3 = p3.x; int y3 = p3.y;
-
-		
-
-		if ((x1 == x2 && x2 == x3) || (y1 == y2 && y2 == y3))
-		{
-			return;
-		}
-
-		float z1 = 1.f / vo1.posH.w;
-		float z2 = 1.f / vo2.posH.w;
-		float z3 = 1.f / vo3.posH.w;
-
-		int minx = std::max(findMin(x1, x2, x3), 1);
-		int miny = std::max(findMin(y1, y2, y3), 1);
-		int maxx = std::min(findMax(x1, x2, x3), width - 1);
-		int maxy = std::min(findMax(y1, y2, y3), height - 1);
-
-		for (int y = miny; y <= maxy; ++y)
-		{
-			for (int x = minx; x <= maxx; ++x)
-			{
-
-				Vector2f p{ float(x) + 0.5f, float(y) + 0.5f };
-				float areaA = ((p - p2).corss(p3 - p2));
-				float areaB = ((p - p3).corss(p1 - p3));
-				float areaC = ((p - p1).corss(p2 - p1));
-				bool okA = areaA < 0.00001f;
-				bool okB = areaB < 0.00001f;
-				bool okC = areaC < 0.00001f;
-				if (!(okA && okB && okC))
-				{
-					continue;
-				}
-				float area = areaA + areaB + areaC;
-				float a = areaA / area;
-				float b = areaB / area;
-				float c = areaC / area;
 
 
-				float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
-				float hz = 1.f / (a * z1 + b * z2 + c * z3);
-				VertexOut vout = (vo1 * (a * z1) + vo2 * (b * z2) + vo3 * (c * z3)) * hz;
-				//VertexOut vout = vo1 * a + vo2 * b + vo3 * c;
 
-				int index = width * y + x;
-				if (zbuffer[index] <= z)
-				{
-					continue;
-				}
+	static void drawFragment(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3);
 
-				zbuffer[index] = z;
-				if (!drawColor)
-				{
-					continue;
-				}
-
-
-				vout.index = index;
-				Vector3f color = ps->execute(vout);
-
-				float* pc = (float*)&color;
-				for (int i = 0; i < 3; ++i)
-				{
-					if (*(pc + i) > 1.f)
-					{
-						*(pc + i) = 1.f;
-					}
-				}
-				int red = color.x * 255;
-				int green = color.y * 255;
-				int blue = color.z * 255;
-				unsigned int colorValue = (red << 16) + (green << 8) + blue;
-
-				renderTarget[index] = colorValue;
-				//}
-
-
-			}
-		}
-	}
+	static void drawFragmentByScanLine(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);
+	
 
 	static std::vector<VertexOut> polygonClipping(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
 	{
@@ -390,6 +320,9 @@ public:
 		}
 		return in;
 	}
+
+	static void drawTopTriangle(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);
+	static void drawBottomTriangle(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);
 };
 
 

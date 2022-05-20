@@ -6,27 +6,39 @@
 #include "Scene.h"
 #include "RenderView.h"
 #include <qdebug.h>
+#include <iostream>
+
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+	QApplication a(argc, argv);
 	RenderView view;
-	PmxModelScene scene;
+	DynamicEnviromentMappingScene scene;
 	view.setScene(&scene);
 	QTimer timer;
-	timer.setInterval(30);
+	timer.setInterval(500);
+	timer.setSingleShot(true);
 	unsigned int fps = 0;
-	QObject::connect(&timer, &QTimer::timeout, [&view]()
+	unsigned long long diff = 0;
+	QObject::connect(&timer, &QTimer::timeout, [&view, &diff, &fps]()
 	{
-		unsigned int m = 1000;
-		unsigned int s = GetTickCount64();
-		view.renderScene();
-		unsigned int diff = GetTickCount64() - s;
-		diff += 1;
-		view.fps = m / (unsigned int)(diff);
-		QApplication::processEvents();
+			while (true)
+			{
+				if (diff >= 1000)
+				{
+					diff = 0;
+					view.fps = fps;
+					fps = 0;
+				}
+				auto s = GetTickCount64();
+				view.renderScene();
+				QApplication::processEvents();
+				diff += GetTickCount64() - s;
+				++fps;
+			}
+		
 	});
 	view.show();
-	view.renderScene();
+	//view.renderScene();
 	timer.start();
     return a.exec();
 }

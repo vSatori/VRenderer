@@ -15,7 +15,7 @@ PSFunction makeGenericPSFunction(GenericPixelShader * shader)
 {
 	auto func = [shader](const VertexOut& vout)
 	{
-		Vector3f color;
+		Vector3f color{ 0.f, 0.f, 0.f };
 		Vector3f litColor{ 0.f, 0.f, 0.f };
 		if (shader->reflect)
 		{
@@ -31,30 +31,32 @@ PSFunction makeGenericPSFunction(GenericPixelShader * shader)
 		{
 			if (shader->texture)
 			{
-				color = shader->texture->sample(vout.vin.tex.x, vout.vin.tex.y);
+				color = shader->texture->sample(vout.uv.x, vout.uv.y);
 			}
 			else
 			{
 				color = shader->color;
 			}
 		}
+		//return color;
 		if (shader->light)
 		{
-
 			float shadow = 1.f;
 			if (shader->depthTexture)
 			{
-				shadow = computeShadow(vout.depthPos, shader->depthTexture);
+				shadow = computeShadow(vout.posD, shader->depthTexture);
 			}
 			
-			litColor += shader->light->compute(RenderContext::eyePos, vout.posW, vout.vin.normal, shadow);
+			litColor = shader->light->compute(RenderContext::eyePos, vout.posW, vout.normalW, shadow);
+			color = color * litColor;
 		}
-		color = color * litColor;
+	
+		
 		if (!RenderContext::alphaBlending)
 		{
 			return color;
 		}
-		Vector3f another = toVector(RenderContext::renderTarget[vout.index]);
+		Vector3f another = toVector(RenderContext::renderTarget[RenderContext::currentPixelIndex]);
 		return color * shader->alpha +  another * (1.f - shader->alpha);
 	};
 	return func;
@@ -64,8 +66,9 @@ PSFunction makeSkyPSFunction(SkyPixelShader * shader)
 {
 	auto func = [shader](const VertexOut& vout)
 	{
-		Vector3f pos = vout.vin.pos;
+		Vector3f pos = vout.posW;
 		pos.normalize();
+		//return Vector3f{ 1.f, 1.f, 0.f };
 		return shader->cubeMap->sample(pos);
 	};
 	return func;

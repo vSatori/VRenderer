@@ -2,7 +2,8 @@
 #define LOADBMP_IMPLEMENTATION
 #include "loadbmp.h"
 #include <algorithm>
-#include "tinyddsloader.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 Texture::Texture() : m_rowData(nullptr), m_width(0), m_height(0)
 {
 }
@@ -33,7 +34,14 @@ Texture::Texture(const char * fileName, bool isBmp)
 	}
 	else
 	{
-
+		int comp = 0;
+		int width = 0;
+		int height = 0;
+		unsigned char* data = stbi_load(fileName, &width, &height, &comp, 0);
+		m_width = width;
+		m_height = height;
+		fillData(data, comp);
+		stbi_image_free(data);
 	}
 }
 
@@ -66,10 +74,12 @@ Vector3f Texture::sample(float u, float v)
 	int x = u * m_width + 0.5;
 	int y = v * m_height + 0.5;
 	int index = y * m_width + x;
+	
 	if (index > m_components.size() - 1)
 	{
 		index = m_components.size() - 1;
 	}
+	
 	return m_components[index];
 }
 #include <qdebug.h>
@@ -82,6 +92,28 @@ unsigned int Texture::sampleValue(float u, float v)
 		y = m_height - 1;
 	}
 	return m_rowData[y * m_width + x];
+}
+
+void Texture::fillData(unsigned char * data, int comp)
+{
+	unsigned int size = m_width * m_height;
+	m_components.resize(m_width * m_height);
+	for (int y = 0; y < m_height; ++y)
+	{
+		for (int x = 0; x < m_width; ++x)
+		{
+			int index = y * m_width + x;
+			unsigned char* color = data + index * comp;
+
+			float r = (float)(color[0]) / 255.f;
+			float g = (float)(color[1]) / 255.f;
+			float b = (float)(color[2]) / 255.f;
+			m_components[index] = { r, g, b };
+		}
+	}
+	
+	m_rowData = new unsigned int[size];
+	memcpy(m_rowData, data, size * sizeof(char) * comp);
 }
 
 
