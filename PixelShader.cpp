@@ -5,7 +5,7 @@ static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 {
 	float x = (pos.x + 1.f) * 0.5f;
 	float y = (1.f - pos.y) * 0.5f;
-	float depth = tex->sampleValue(x,y);
+	float depth = tex->sample(x,y);
 	return pos.z - 0.05f < depth ? 1.f : 0.f;
 }
 

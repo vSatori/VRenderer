@@ -5,15 +5,14 @@ VSFunction makeGenericVSFunction(GenericVertexShader * shader)
 	auto func = [shader](const Vertex& vin)
 	{
 		VertexOut out;
-		
 		Vector4f posW = shader->world * vector3To4(vin.pos);
 		Vector4f posV = shader->view * posW;
 		Vector4f posH = shader->projection * posV;
 		out.uv = vin.tex;
 		out.posM = vin.pos;
-		out.posW = { posW.x, posW.y, posW.z };
+		out.posW = Vector4To3(posW);
 		out.posH = posH;
-	    out.posD = shader->shadowProjection * shader->matLitView * posW;
+	    //out.posD = shader->shadowProjection * shader->matLitView * posW;
 		out.normalW = vin.normal;
 		
 		return out;

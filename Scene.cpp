@@ -2,20 +2,30 @@
 #include "RenderContext.h"
 #include "MeshFactory.h"
 #include <qdebug.h>
-#include <omp.h>
+#include <Windows.h>
 #include "Pmx.h"
 #define MAXVRTEXSIZE 500000;
 //static VertexOut vertexBuffer[500000];
 
+static void perspectiveDivide(Vector4f& posH)
+{
+	posH.x /= posH.w;
+	posH.y /= posH.w;
+	posH.z /= posH.w;
+}
+
+
 void Scene::drawMesh(const Mesh & mesh)
 {
+	//auto vsBegin = GetTickCount64();
 	int vertexSize = mesh.vertices.size();
 	VertexOut* vertexBuff = new VertexOut[vertexSize];
 	for (int vIndex = 0; vIndex < vertexSize; ++vIndex)
 	{
 		vertexBuff[vIndex] = RenderContext::vs->execute(mesh.vertices[vIndex]);
 	}
-	
+	//qDebug() << "vertex shader: " << GetTickCount64() - vsBegin;
+	//auto fsBegin = GetTickCount64();
 	int faceSize = mesh.indices.size();
 	for (int faceIndex = 0; faceIndex < faceSize; ++faceIndex)
 	{
@@ -47,31 +57,27 @@ void Scene::drawMesh(const Mesh & mesh)
 		}
 		else
 		{
-			float w1 = vo1.posH.w;
-			float w2 = vo2.posH.w;
-			float w3 = vo3.posH.w;
-			vo1.posH /= vo1.posH.w;
-			vo2.posH /= vo2.posH.w;
-			vo3.posH /= vo3.posH.w;
-			vo1.posH.w = w1;
-			vo2.posH.w = w2;
-			vo3.posH.w = w3;
+			perspectiveDivide(vo1.posH);
+			perspectiveDivide(vo2.posH);
+			perspectiveDivide(vo3.posH);
 			RenderContext::drawFragment(vo1, vo2, vo3);
 		}
 		
 	}
+	//qDebug() << GetTickCount64() - fsBegin;
 	delete[] vertexBuff;
 }
 
 void Scene::drawMesh(const Mesh & mesh, const std::vector<VertexOut>& vertexBuff)
 {
+	auto vsBegin = GetTickCount64();
 	int faceSize = mesh.indices.size();
 	for (int faceIndex = 0; faceIndex < faceSize; ++faceIndex)
 	{
 		const Vector3i& face = mesh.indices[faceIndex];
 
 		VertexOut vo1 = vertexBuff[face.x];
-		VertexOut vo2 = vertexBuff[face.y];
+	    VertexOut vo2 = vertexBuff[face.y];
 		VertexOut vo3 = vertexBuff[face.z];
 		Vector3f faceNormal = (vo2.posW - vo1.posW).cross(vo3.posW - vo2.posW);
 		if (!RenderContext::Cull(vo1.posW, faceNormal))
@@ -96,15 +102,9 @@ void Scene::drawMesh(const Mesh & mesh, const std::vector<VertexOut>& vertexBuff
 		}
 		else
 		{
-			float w1 = vo1.posH.w;
-			float w2 = vo2.posH.w;
-			float w3 = vo3.posH.w;
-			vo1.posH /= vo1.posH.w;
-			vo2.posH /= vo2.posH.w;
-			vo3.posH /= vo3.posH.w;
-			vo1.posH.w = w1;
-			vo2.posH.w = w2;
-			vo3.posH.w = w3;
+			perspectiveDivide(vo1.posH);
+			perspectiveDivide(vo2.posH);
+			perspectiveDivide(vo3.posH);
 			RenderContext::drawFragment(vo1, vo2, vo3);
 		}
 
@@ -131,12 +131,12 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 	m_spherePS->function = makeGenericPSFunction(m_spherePS);
 	MeshFactory::createCube(m_sky, 1.f, 1.f, 1.f);
 	std::vector<std::string> files;
-	files.push_back("D:/Project/Renderer/skybox/skybox/left.bmp");
-	files.push_back("D:/Project/Renderer/skybox/skybox/right.bmp");
-	files.push_back("D:/Project/Renderer/skybox/skybox/top.bmp");
-	files.push_back("D:/Project/Renderer/skybox/skybox/bottom.bmp");
-	files.push_back("D:/Project/Renderer/skybox/skybox/back.bmp");
-	files.push_back("D:/Project/Renderer/skybox/skybox/front.bmp");
+	files.push_back("D:/D3D12/models/skybox/skybox/left.bmp");
+	files.push_back("D:/D3D12/models/skybox/skybox/right.bmp");
+	files.push_back("D:/D3D12/models/skybox/skybox/top.bmp");
+	files.push_back("D:/D3D12/models/skybox/skybox/bottom.bmp");
+	files.push_back("D:/D3D12/models/skybox/skybox/back.bmp");
+	files.push_back("D:/D3D12/models/skybox/skybox/front.bmp");
 	m_sky.cubeMap = std::make_unique<CubeMap>(files);
 	m_skyPS->cubeMap = m_sky.cubeMap.get();
 	MeshFactory::createCube(m_reflectSphere, 2.f, 2.f, 2.f);
@@ -196,14 +196,16 @@ DynamicEnviromentMappingScene::~DynamicEnviromentMappingScene()
 #include <qapplication.h>
 void DynamicEnviromentMappingScene::render()
 {
-	frameFactor += 2;
-	if (frameFactor >= 360.f)
+	m_frameFactor += 2;
+	if (m_frameFactor >= 360.f)
 	{
-		frameFactor = 0.f;
+		m_frameFactor = 0.f;
 	}
+
 	render(false);
+	qDebug() << RenderContext::allCount << RenderContext::count;
 	return;
-	
+
 	unsigned int* frameCache = RenderContext::renderTarget;
 	Camera cameraCache = camera;
 	float fovCache = fov;
@@ -226,7 +228,7 @@ void DynamicEnviromentMappingScene::render()
 		camera.target = targets[i];
 		//render(false);
 		m_envCubeMap->setRowData(static_cast<DynamicCubeMap::Direction>(i), buff, RenderContext::width, RenderContext::height);
-		delete buff;
+		delete[] buff;
 	}
 	
 	RenderContext::renderTarget = frameCache;
@@ -245,24 +247,7 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	Matrix4 world;
 	Matrix4 projection = getProjectionMatrix();
 
-
-	RenderContext::cullMode = CullMode::CULLNONE;
-	m_skyVS->view = camera.viewMat;
-	m_skyVS->projection = projection;
-	RenderContext::vs = m_skyVS;
-	RenderContext::ps = m_skyPS;
-	RenderContext::posArea = true;
-	RenderContext::lerpFunc = CubeMapLerpFunction;
-	drawMesh(m_sky);
-	RenderContext::posArea = false;
-	return;
-
-
-
-
-
-
-	m_sphereVS->view = camera.viewMat;
+	m_sphereVS->view = camera.matrix;
 	m_sphereVS->projection = projection;
 	m_spherePS->eyePos = camera.pos;
 
@@ -273,17 +258,15 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	{
 		m_sphereVS->world.init();
 		m_spherePS->reflect = true;
-		RenderContext::lerpFunc = CubeMapLerpFunction;
 		//drawMesh(m_reflectSphere);
 	}
 	m_spherePS->reflect = false;
-	RenderContext::lerpFunc = genericLerpFunction;
 	for (int index = 0; index < m_movingSpheres.size(); ++index)
 	{
 		const auto& movingSphere = m_movingSpheres[index];
 		world.init();
-		world.m[0][3] = cosf(radian(frameFactor + index * 90.f)) * 6.f;
-		world.m[2][3] = sinf(radian(frameFactor + index * 90.f)) * 6.f;
+		world.m[0][3] = cosf(radian(m_frameFactor + index * 90.f)) * 6.f;
+		world.m[2][3] = sinf(radian(m_frameFactor + index * 90.f)) * 6.f;
 		m_sphereVS->world = world;
 		m_spherePS->color = m_sphereColors[index];
 		
@@ -295,12 +278,11 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	}
 	
 	RenderContext::cullMode = CullMode::CULLNONE;
-	m_skyVS->view = camera.viewMat;
+	m_skyVS->view = camera.matrix;
 	m_skyVS->projection = projection;
 	RenderContext::vs = m_skyVS;
 	RenderContext::ps = m_skyPS;
 	RenderContext::posArea = true;
-	RenderContext::lerpFunc = CubeMapLerpFunction;
 	drawMesh(m_sky);
 	RenderContext::posArea = false;
 }
@@ -381,15 +363,15 @@ ShadowMappingScene::~ShadowMappingScene()
 
 void ShadowMappingScene::render()
 {
-	frameFactor += 2;
-	if (frameFactor > 360)
+	m_frameFactor += 2;
+	if (m_frameFactor > 360)
 	{
-		frameFactor = 0;
+		m_frameFactor = 0;
 	}
 
-	float x = cosf(radian(frameFactor)) * 10.f;
+	float x = cosf(radian(m_frameFactor)) * 10.f;
 	float y = 10.f;
-	float z = sinf(radian(frameFactor)) * 10.f;
+	float z = sinf(radian(m_frameFactor)) * 10.f;
 	m_light->pos = { x, y, z };
 	m_light->direction = { -x, -y, -z };
 	m_light->direction.normalize();
@@ -416,8 +398,8 @@ void ShadowMappingScene::renderShadow()
 	Matrix4 world;
 	Matrix4 projection;
 	Vector3f center = { 0.f, 0.f, 0.f };
-	projection = getShadowProjectionMatrix(camera.viewMat);
-	m_shadowVS->view = camera.viewMat;
+	projection = getShadowProjectionMatrix(camera.matrix);
+	m_shadowVS->view = camera.matrix;
 	m_shadowVS->projection = projection;
 	RenderContext::vs = m_shadowVS;
 	world.m[1][3] = -1.7f;
@@ -435,7 +417,7 @@ void ShadowMappingScene::renderScene()
 	RenderContext::cullMode = CullMode::CULLBACKFACE;
 	Matrix4 world;
 	Matrix4 projection = getProjectionMatrix();
-	m_sphereVS->view = camera.viewMat;
+	m_sphereVS->view = camera.matrix;
 	m_sphereVS->projection = projection;
 	m_spherePS->eyePos = camera.pos;
 	Camera tempCamera = camera;
@@ -443,8 +425,8 @@ void ShadowMappingScene::renderScene()
 	tempCamera.target = { 0.f, 0.f, 0.f };
 	tempCamera.pos = m_light->pos;
 	tempCamera.update();
-	m_sphereVS->matLitView = tempCamera.viewMat;
-	m_sphereVS->shadowProjection = getShadowProjectionMatrix(tempCamera.viewMat);
+	m_sphereVS->matLitView = tempCamera.matrix;
+	m_sphereVS->shadowProjection = getShadowProjectionMatrix(tempCamera.matrix);
 	RenderContext::vs = m_sphereVS;
 	RenderContext::ps = m_spherePS;
 	world.m[1][3] = -1.7f;
@@ -484,8 +466,8 @@ std::string wstring2string(std::wstring wstr)
 
 PmxModelScene::PmxModelScene()
 {
-	const char *filename = "D:/Project/other/models/shenghun/shenghun/生魂-奥西里斯1.0.pmx";
-	std::wstring prepath = L"D:\\Project\\other\\models\\shenghun\\shenghun\\";
+	const char *filename = "D:/D3D12/models/bachong/八重神子.pmx";
+	std::wstring prepath = L"D:\\D3D12\\models\\bachong\\";
 	pmx::PmxModel model;
 	std::ifstream stream = std::ifstream(filename, std::ios_base::binary);
 	model.Read(&stream);
@@ -528,9 +510,10 @@ PmxModelScene::PmxModelScene()
 		currentIndx += faceSize;
 
 		std::wstring path = prepath + texturePaths[material.diffuse_texture_index];
-		m_keqing[i].texture = std::make_unique<Texture>(wstring2string(path).c_str(), false);
+		m_keqing[i].texture = std::make_unique<Texture>(wstring2string(path).c_str());
 
 	}
+	qDebug() << model.vertex_count << model.index_count / 3;
 
 	nearPlane = 0.1f;
 	farPlane = 1000.f;
@@ -566,8 +549,6 @@ PmxModelScene::PmxModelScene()
 
 	RenderContext::cullMode = CullMode::CULLBACKFACE;
 	RenderContext::fillMode = FillMode::SOLID;
-
-	RenderContext::lerpFunc = ModelLerpFunction;
 }
 
 void PmxModelScene::render()
@@ -576,9 +557,7 @@ void PmxModelScene::render()
 	camera.update();
 	RenderContext::eyePos = camera.pos;
 	m_VS->projection = getProjectionMatrix();
-	m_VS->view = camera.viewMat;
-
-
+	m_VS->view = camera.matrix;
 	int vertexSize = m_keqing[0].vertices.size();
 	std::vector<VertexOut> buff;
 	buff.resize(vertexSize);
@@ -586,7 +565,6 @@ void PmxModelScene::render()
 	{
 		buff[vIndex] = RenderContext::vs->execute(m_keqing[0].vertices[vIndex]);
 	}
-
 	for (int i = 0; i < m_keqing.size(); ++i)
 	{
 		m_PS->texture = m_keqing[i].texture.get();

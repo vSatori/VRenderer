@@ -13,6 +13,7 @@ RenderView::RenderView(QWidget *parent)
 {
 	RenderContext::init();
 	setFixedSize(RenderContext::width, RenderContext::height);
+	
 }
 
 RenderView::~RenderView()
@@ -42,8 +43,11 @@ void RenderView::paintEvent(QPaintEvent * e)
 	QPen pen;
 	pen.setColor(Qt::red);
 	p.setPen(pen);
+	QFont font;
+	font.setPixelSize(15);
+	p.setFont(font);
 	p.drawImage(0, 0, image);
-	p.drawText(10, 10, QString("fps:%1").arg(fps));
+	p.drawText(30, 30, QString("fps:%1").arg(fps));
 }
 
 void RenderView::mousePressEvent(QMouseEvent * e)

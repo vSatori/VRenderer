@@ -18,6 +18,10 @@ struct VertexOut
 	Vector3f normalW;
 	Vector4f posH;
 	Vector4f posD;
+
+	static const int uvIndex = 0;
+	static const int unLength = 2;
+	static const int posWIndex = 5;
 	
 	VertexOut operator+(const VertexOut& vo)const
 	{

@@ -23,25 +23,25 @@ public:
 		post.normalize();
 		up = dir.cross(post);
 
-		viewMat.m[0][0] = post.x;
-		viewMat.m[0][1] = post.y;
-		viewMat.m[0][2] = post.z;
-		viewMat.m[0][3] = -post.dot(pos);
+		matrix.m[0][0] = post.x;
+		matrix.m[0][1] = post.y;
+		matrix.m[0][2] = post.z;
+		matrix.m[0][3] = -post.dot(pos);
 
-		viewMat.m[1][0] = up.x;
-		viewMat.m[1][1] = up.y;
-		viewMat.m[1][2] = up.z;
-		viewMat.m[1][3] = -up.dot(pos);
+		matrix.m[1][0] = up.x;
+		matrix.m[1][1] = up.y;
+		matrix.m[1][2] = up.z;
+		matrix.m[1][3] = -up.dot(pos);
 
-		viewMat.m[2][0] = dir.x;
-		viewMat.m[2][1] = dir.y;
-		viewMat.m[2][2] = dir.z;
-		viewMat.m[2][3] = -dir.dot(pos);
+		matrix.m[2][0] = dir.x;
+		matrix.m[2][1] = dir.y;
+		matrix.m[2][2] = dir.z;
+		matrix.m[2][3] = -dir.dot(pos);
 
-		viewMat.m[3][0] = 0;
-		viewMat.m[3][1] = 0;
-		viewMat.m[3][2] = 0;
-		viewMat.m[3][3] = 1;
+		matrix.m[3][0] = 0;
+		matrix.m[3][1] = 0;
+		matrix.m[3][2] = 0;
+		matrix.m[3][3] = 1;
 		
 
 	}
@@ -50,7 +50,7 @@ public:
 	Vector3f target;
 	Vector3f up;
 	float radius;
-	Matrix4 viewMat;
+	Matrix4 matrix;
 	float yaw;
 	float pitch;
 	bool useSphereMode;

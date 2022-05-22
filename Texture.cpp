@@ -1,48 +1,24 @@
 #include "Texture.h"
-#define LOADBMP_IMPLEMENTATION
-#include "loadbmp.h"
 #include <algorithm>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-Texture::Texture() : m_rowData(nullptr), m_width(0), m_height(0)
+Texture::Texture() : 
+	m_rowData(nullptr), 
+	m_width(0), 
+	m_height(0),
+	m_maxWidthIndex(0),
+	m_maxHeightIndex(0)
 {
 }
-Texture::Texture(const char * fileName, bool isBmp)
+Texture::Texture(const char* fileName)
 {
-	if (isBmp)
-	{
-		unsigned char* rowData;
-		loadbmp_decode_file(fileName, &rowData, &m_width, &m_height, LOADBMP_RGBA);
-		unsigned int* data = (unsigned int*)rowData;
-		m_components.resize(m_width * m_height);
-		for (int y = 0; y < m_height; ++y)
-		{
-			for (int x = 0; x < m_width; ++x)
-			{
-				int index = y * m_width + x;
-				unsigned int color = data[index];
-
-				float r = ((float)((color << 8) >> 24)) / 255.f;
-				float g = ((float)((color << 16) >> 24)) / 255.f;
-				float b = ((float)((color << 24) >> 24)) / 255.f;
-				m_components[index] = { r, g, b };
-			}
-		}
-		unsigned int size = m_width * m_height;
-		m_rowData = new unsigned int[size];
-		memcpy(m_rowData, data, size * sizeof(unsigned int));
-	}
-	else
-	{
-		int comp = 0;
-		int width = 0;
-		int height = 0;
-		unsigned char* data = stbi_load(fileName, &width, &height, &comp, 0);
-		m_width = width;
-		m_height = height;
-		fillData(data, comp);
-		stbi_image_free(data);
-	}
+	int comp = 0;
+	int width = 0;
+	int height = 0;
+	unsigned char* data = stbi_load(fileName, &width, &height, &comp, 0);
+	setSize(width, height);
+	fillData(data, comp);
+	stbi_image_free(data);
 }
 
 Texture::~Texture()
@@ -55,42 +31,29 @@ Texture::~Texture()
 
 
 
-void Texture::setRowData(unsigned int * data, unsigned int width, unsigned int height)
+void Texture::setRowData(unsigned int * data, int width, int height)
 {
 	if (m_rowData)
 	{
 		delete[] m_rowData;
 	}
-	m_width = width;
-	m_height = height;
-	unsigned int size = m_width * m_height;
+	setSize(width, height);
+	int size = m_width * m_height;
 	m_rowData = new unsigned int[size];
 	memcpy(m_rowData, data, size * sizeof(unsigned int));
-	m_maxIndex = size - 1;
 }
 
 Vector3f Texture::sample(float u, float v)
 {
-	int x = u * m_width + 0.5;
-	int y = v * m_height + 0.5;
-	int index = y * m_width + x;
-	
-	if (index > m_components.size() - 1)
-	{
-		index = m_components.size() - 1;
-	}
-	
-	return m_components[index];
+	int x = u * m_maxWidthIndex + 0.5f;
+	int y = v * m_maxHeightIndex + 0.5f;
+	return m_components[y * m_width + x];
 }
-#include <qdebug.h>
+
 unsigned int Texture::sampleValue(float u, float v)
 {
-	int x = u * m_width + 0.5;
-	int y = v * m_height + 0.5;
-	if (y >= m_height)
-	{
-		y = m_height - 1;
-	}
+	int x = u * m_maxWidthIndex + 0.5;
+	int y = v * m_maxHeightIndex + 0.5;
 	return m_rowData[y * m_width + x];
 }
 
@@ -104,16 +67,22 @@ void Texture::fillData(unsigned char * data, int comp)
 		{
 			int index = y * m_width + x;
 			unsigned char* color = data + index * comp;
-
 			float r = (float)(color[0]) / 255.f;
 			float g = (float)(color[1]) / 255.f;
 			float b = (float)(color[2]) / 255.f;
 			m_components[index] = { r, g, b };
 		}
 	}
-	
 	m_rowData = new unsigned int[size];
 	memcpy(m_rowData, data, size * sizeof(char) * comp);
+}
+
+void Texture::setSize(int width, int height)
+{
+	m_width = width;
+	m_height = height;
+	m_maxWidthIndex = width - 1;
+	m_maxHeightIndex = height - 1;
 }
 
 
@@ -133,7 +102,6 @@ Vector3f CubeMap::sample(const Vector3f & dir)
 	float absy = abs(dir.y);
 	float absz = abs(dir.z);
 	float maxValue = std::max(std::max(absx, absy), abs(absz));
-	
 	if (maxValue == 0.f)
 	{
 		return Vector3f();
@@ -169,12 +137,9 @@ Vector3f CubeMap::sample(const Vector3f & dir)
 			y = 1.f - (dir.z / maxValue + 1.f) / 2.f;
 			direction = Direction::BOTTOM;
 		}
-		
 	}
-	
 	else 
 	{
-		
 		if (dir.z > 0.f)
 		{
 			x = (dir.x/ maxValue + 1.f) / 2.f;
@@ -188,10 +153,7 @@ Vector3f CubeMap::sample(const Vector3f & dir)
 			y = (1.f - dir.y / maxValue) / 2.f;
 			direction = Direction::FRONT;
 		}
-	    
-		
 	}
-	
 	return m_textures[direction]->sample(x, y);
 }
 
@@ -277,7 +239,12 @@ unsigned int DynamicCubeMap::sample(const Vector3f & dir)
 	return m_textures[direction]->sampleValue(x, y);
 }
 
-DepthTexture::DepthTexture() : m_rowData(nullptr)
+DepthTexture::DepthTexture() : 
+	m_rowData(nullptr),
+	m_width(0),
+	m_height(0),
+	m_maxWidthIndex(0),
+	m_maxHeightIndex(0)
 {
 }
 
@@ -289,7 +256,7 @@ DepthTexture::~DepthTexture()
 	}
 }
 
-void DepthTexture::setRowData(float * data, unsigned int width, unsigned int height)
+void DepthTexture::setRowData(float * data, int width, int height)
 {
 	if (m_rowData)
 	{
@@ -297,7 +264,7 @@ void DepthTexture::setRowData(float * data, unsigned int width, unsigned int hei
 	}
 	m_width = width;
 	m_height = height;
-	unsigned int size = m_width * m_height;
+	int size = m_width * m_height;
 	m_rowData = new float[size];
 	memcpy(m_rowData, data, size * sizeof(float));
 
@@ -305,7 +272,7 @@ void DepthTexture::setRowData(float * data, unsigned int width, unsigned int hei
 
 }
 
-float DepthTexture::sampleValue(float u, float v)
+float DepthTexture::sample(float u, float v)
 {
 	int x = u * m_width + 0.5;
 	int y = v * m_height + 0.5;

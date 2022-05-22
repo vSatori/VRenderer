@@ -4,24 +4,27 @@
 #include <string>
 #include <map>
 #include <memory>
+
 class Texture
 {
 public:
 	Texture();
-	Texture(const char* fileName, bool isBmp = true);
+	Texture(const char* fileName);
 	~Texture();
 public:
-	void setRowData(unsigned int* data, unsigned int width, unsigned int height);
+	void setRowData(unsigned int* data, int width, int height);
 	Vector3f sample(float u, float v);
 	unsigned int sampleValue(float u, float v);
 private:
 	void fillData(unsigned char* data, int comp = 4);
+	void setSize(int width, int height);
 private:
 	std::vector<Vector3f> m_components;
 	unsigned int* m_rowData;
-	unsigned int m_width;
-	unsigned int m_height;
-	unsigned int m_maxIndex;
+	int m_width;
+	int m_height;
+	int m_maxWidthIndex;
+	int m_maxHeightIndex;
 };
 
 class DepthTexture
@@ -30,12 +33,14 @@ public:
 	DepthTexture();
 	~DepthTexture();
 public:
-	void setRowData(float* data, unsigned int width, unsigned int height);
-	float sampleValue(float u, float v);
+	void setRowData(float* data, int width, int height);
+	float sample(float u, float v);
 private:
 	float* m_rowData;
-	unsigned int m_width;
-	unsigned int m_height;
+	int m_width;
+	int m_height;
+	int m_maxWidthIndex;
+	int m_maxHeightIndex;
 };
 
 

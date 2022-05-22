@@ -22,8 +22,8 @@ public:
 	float nearPlane;
 	float farPlane;
 	float fov;
-	bool useOrthogonal;
-	unsigned int frameFactor;
+protected:
+	int m_frameFactor;
 };
 
 class DynamicEnviromentMappingScene : public Scene

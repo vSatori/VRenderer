@@ -7,9 +7,21 @@
 #include "RenderView.h"
 #include <qdebug.h>
 #include <iostream>
-
+#include <xmmintrin.h>
+std::vector<Vector3f> temp;
 int main(int argc, char *argv[])
 {
+	/*
+	temp.resize(1000000);
+	VertexOut* buff = new VertexOut[1000000];
+	auto ss = GetTickCount64();
+	for (int i = 0; i < 1000000; ++i)
+	{
+		VertexOut vout = buff[i];
+		temp[i] = vout.posM;rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+	}
+	qDebug() << GetTickCount64() - ss;
+	*/
 	QApplication a(argc, argv);
 	RenderView view;
 	DynamicEnviromentMappingScene scene;
@@ -38,7 +50,8 @@ int main(int argc, char *argv[])
 		
 	});
 	view.show();
-	//view.renderScene();
-	timer.start();
+	view.renderScene();
+
+	//timer.start();
     return a.exec();
 }
