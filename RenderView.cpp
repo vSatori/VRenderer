@@ -1,6 +1,6 @@
 #include "RenderView.h"
-#include <qpainter.h>
-#include <qevent.h>
+#include <QtGui/qpainter.h>
+#include <QtGui/qevent.h>
 #include "Scene.h"
 #include "RenderContext.h"
 
@@ -9,7 +9,8 @@ RenderView::RenderView(QWidget *parent)
 	m_currentScene(nullptr), 
 	m_interact(false), 
 	m_lastX(0.f), 
-	m_lastY(0.f)
+	m_lastY(0.f),
+	fps(0)
 {
 	RenderContext::init();
 	setFixedSize(RenderContext::width, RenderContext::height);
@@ -34,6 +35,8 @@ void RenderView::renderScene()
 void RenderView::setScene(Scene * scene)
 {
 	m_currentScene = scene;
+	RenderContext::nearPlane = scene->nearPlane;
+	RenderContext::farPlane = scene->farPlane;
 }
 
 void RenderView::paintEvent(QPaintEvent * e)
@@ -43,9 +46,6 @@ void RenderView::paintEvent(QPaintEvent * e)
 	QPen pen;
 	pen.setColor(Qt::red);
 	p.setPen(pen);
-	QFont font;
-	font.setPixelSize(15);
-	p.setFont(font);
 	p.drawImage(0, 0, image);
 	p.drawText(30, 30, QString("fps:%1").arg(fps));
 }
@@ -59,6 +59,10 @@ void RenderView::mousePressEvent(QMouseEvent * e)
 
 void RenderView::mouseMoveEvent(QMouseEvent * e)
 {
+	if (!m_interact)
+	{
+		return;
+	}
 	if (!m_currentScene || !m_currentScene->camera.useSphereMode)
 	{
 		return;

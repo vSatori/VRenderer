@@ -15,8 +15,10 @@ public:
 	Matrix4 world;
 	Matrix4 view;
 	Matrix4 projection;
-	Matrix4 matLitView;
-
+	Matrix4 vp;
+	Matrix3 world3;
+	bool computeDepth = true;
+	bool computeNormal = true;
 };
 
 
@@ -24,7 +26,7 @@ public:
 class GenericVertexShader : public VertexShader
 {
 public:
-	Matrix4 shadowProjection;
+	Matrix4 shadow;
 };
 
 class SkyVertexShader : public VertexShader
@@ -33,6 +35,7 @@ class SkyVertexShader : public VertexShader
 
 class ShadowMapVertexShader: public VertexShader
 {
+public:
 
 };
 

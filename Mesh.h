@@ -19,9 +19,7 @@ struct VertexOut
 	Vector4f posH;
 	Vector4f posD;
 
-	static const int uvIndex = 0;
-	static const int unLength = 2;
-	static const int posWIndex = 5;
+	static const int floatSize = 19;
 	
 	VertexOut operator+(const VertexOut& vo)const
 	{
@@ -58,7 +56,15 @@ struct VertexOut
 		res.normalW *= t;
 		return res;
 	}
-	
+};
+
+struct Material
+{
+	Vector3f ambient{1.f, 1.f, 1.f};
+	Vector3f diffuse{1.f, 1.f, 1.f};
+	Vector3f specular{1.f, 1.f, 1.f};
+	float shininess = 32.f;
+	bool reflect = false;
 };
 
 
@@ -68,7 +74,8 @@ struct Mesh
 {
 	std::vector<Vertex> vertices;
 	std::vector<Vector3i> indices;
-	std::unique_ptr<Texture> texture;
+	std::shared_ptr<Texture> texture;
+	Material material;
 };
 
 

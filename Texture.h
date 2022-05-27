@@ -36,6 +36,8 @@ public:
 	void setRowData(float* data, int width, int height);
 	float sample(float u, float v);
 private:
+	void setSize(int w, int h);
+private:
 	float* m_rowData;
 	int m_width;
 	int m_height;
@@ -53,6 +55,12 @@ public:
 	Vector3f sample(const Vector3f& dir);
 private:
 	std::map<Direction, std::unique_ptr<Texture>> m_textures;
+	Texture* m_front;
+	Texture* m_back;
+	Texture* m_left;
+	Texture* m_right;
+	Texture* m_top;
+	Texture* m_bottom;
 };
 
 class DynamicCubeMap

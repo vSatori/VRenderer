@@ -10,6 +10,7 @@ omp_init_lock(&lock);
 const float RenderContext::clipW = 0.00001f;
 CullMode RenderContext::cullMode = CullMode::CULLBACKFACE;
 FillMode RenderContext::fillMode = FillMode::SOLID;
+DepthMode RenderContext::depthMode = DepthMode::LESS;
 bool RenderContext::alphaBlending = false;
 bool RenderContext::drawColor = true;
 bool RenderContext::posArea = false;
@@ -21,8 +22,7 @@ float RenderContext::farPlane = 100.f;
 VertexShader* RenderContext::vs = nullptr;
 PixelShader* RenderContext::ps = nullptr;
 unsigned int RenderContext::currentPixelIndex = 0;
-int RenderContext::count = 0;
-int RenderContext::allCount = 0;
+
 
 void RenderContext::init()
 {
@@ -64,7 +64,7 @@ void RenderContext::clear()
 	{
 		for (int j = 0; j < width; ++j)
 		{
-			zbuffer[i * width + j] = 1.001f;
+			zbuffer[i * width + j] = 1.00001f;
 		}
 	}
 }
@@ -90,6 +90,36 @@ bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 		return false;
 	}
 	}
+}
+
+bool RenderContext::depthTest(float z)
+{
+	switch (depthMode)
+	{
+	case DepthMode::NEVER:
+	{
+		return false;
+	}
+	case DepthMode::LESS:
+	{
+		return z < zbuffer[currentPixelIndex];
+	}
+	case DepthMode::EQUAL:
+	{
+		return z == zbuffer[currentPixelIndex];
+	}
+	case DepthMode::LESSEQUAL:
+	{
+		return z <= zbuffer[currentPixelIndex];
+	}
+	case DepthMode::ALWAYS:
+	{
+		return true;
+	}
+	default:
+		return false;
+	}
+	return false;
 }
 
 bool RenderContext::checkClipping(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3)
@@ -124,7 +154,7 @@ bool RenderContext::checkClipping(const Vector4f& v1, const Vector4f& v2, const 
 	}
 	return false;
 }
-
+#include <iostream>
 void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, const VertexOut & vo3)
 {
 	Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  ((1.f - vo1.posH.y) * 0.5f * height) };
@@ -140,7 +170,6 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 	int maxx = std::min(findMax(x1, x2, x3), width - 1);
 	int maxy = std::min(findMax(y1, y2, y3), height - 1);
 
-	
 	VertexOut vout;
 	
 	float* pVout = (float*)&vout;
@@ -151,16 +180,17 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 	{
 		for (int x = minx; x <= maxx; ++x)
 		{
-			++allCount;
 			Vector2f p{ static_cast<float>(x), static_cast<float>(y)};
 			float areaA = ((p - p2).corss(p3 - p2));
 			float areaB = ((p - p3).corss(p1 - p3));
 			float areaC = ((p - p1).corss(p2 - p1));
+
 			if (!posArea)
 			{
 				bool okA = areaA < 0.00001f;
 				bool okB = areaB < 0.00001f;
 				bool okC = areaC < 0.00001f;
+
 				if (!(okA && okB && okC))
 				{
 					continue;
@@ -168,24 +198,23 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 			}
 			else
 			{
-				bool okA = areaA > -0.00001f;
-				bool okB = areaB > -0.00001f;
-				bool okC = areaC > -0.00001f;
-				if (!(okA && okB && okC))
+				bool okD = areaA > -0.00001f;
+				bool okE = areaB > -0.00001f;
+				bool okF = areaC > -0.00001f;
+
+				if (!(okD && okE && okF))
 				{
 					continue;
 				}
 			}
-			++count;
-			
 			float area = areaA + areaB + areaC;
 			float a = areaA / area;
 			float b = areaB / area;
 			float c = areaC / area;
-			
+
 			float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
 			currentPixelIndex = width * y + x;
-			if (zbuffer[currentPixelIndex] <= z)
+			if (!depthTest(z))
 			{
 				continue;
 			}
@@ -194,16 +223,18 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 			{
 				continue;
 			}
-	
+
 			a /= vo1.posH.w;
 			b /= vo2.posH.w;
 			c /= vo3.posH.w;
 			float hz = 1.f / (a + b + c);
-			for (int i = 0; i < 19; ++i)
+			for (int i = 0; i < VertexOut::floatSize; ++i)
 			{
 				pVout[i] = (pVo1[i] * a + pVo2[i] * b + pVo3[i] * c) * hz;
 			}
-			Vector3f color =  ps->execute(vout);
+
+			Vector3f color = ps->execute(vout);
+\
 			float* pc = (float*)&color;
 			for (int i = 0; i < 3; ++i)
 			{
@@ -404,8 +435,37 @@ bool RenderContext::inside(const Vector4f& pos, int side)
 	return in;
 }
 
-
+static void lerp(VertexOut& vo, const VertexOut& vo1, const VertexOut& vo2, float t)
+{
+	float* pv = (float*)(&vo);
+	const float* pv1 = (const float*)(&vo1);
+	const float* pv2 = (const float*)(&vo2);
+	for (int i = 0; i < 19; ++i)
+	{
+		pv[i] = pv1[i] + (pv2[i] - pv1[i]) * t;
+	}
+}
 /*
+static void lerp(VertexOut& vo, const VertexOut& vo1, const VertexOut& vo2, float t)
+{
+	float* pv = (float*)(&vo1);
+	const float* pv1 = (const float*)(&vo1);
+	const float* pv2 = (const float*)(&vo2);
+	float z1 = vo1.posH.w;
+	float z2 = vo2.posH.w;
+	for (int i = 0; i < 19; ++i)
+	{
+		pv[i] = pv1[i] / z1 + (pv2[i] / z2 - pv1[i] / z1) * t;
+
+	}
+	float z = vo.posH.w;
+	for (int i = 0; i < 19; ++i)
+	{
+		pv[i] *= z;
+	}
+}
+*/
+
 
 void RenderContext::drawFragmentByScanLine(VertexOut & vo1, VertexOut & vo2, VertexOut & vo3)
 {
@@ -420,7 +480,7 @@ void RenderContext::drawFragmentByScanLine(VertexOut & vo1, VertexOut & vo2, Ver
 		return;
 		
 	}
-	if (vo1.posH.y == vo3.posH.z)
+	if (vo1.posH.y == vo3.posH.y)
 	{
 		if (vo1.posH.y > vo2.posH.y)
 		{
@@ -448,36 +508,36 @@ void RenderContext::drawFragmentByScanLine(VertexOut & vo1, VertexOut & vo2, Ver
 		return v1.posH.y > v2.posH.y;
 	});
 
-	vo1 = temp[0];
-	vo2 = temp[1];
-	vo3 = temp[2];
+	VertexOut v1 = temp[0];
+	VertexOut v2= temp[1];
+	VertexOut v3= temp[2];
 
 	//sort(vo1, vo2, vo3);
-	VertexOut vo4;
-	float t = (vo2.posH.y - vo1.posH.y) / (vo3.posH.y - vo1.posH.y);
-	//ModelLerpFunction(vo4, vo1, vo3, t);
-	drawBottomTriangle(vo1, vo2, vo4);
-	drawTopTriangle(vo2, vo4, vo3);
+	VertexOut v4;
+	float t = (v2.posH.y - v1.posH.y) / (v3.posH.y - v1.posH.y);
+	lerp(v4, v1, v3, t);
+	drawBottomTriangle(v1, v2, v4);
+	drawTopTriangle(v2, v4, v3);
 }
 
 
 void RenderContext::drawTopTriangle(VertexOut & vo1, VertexOut & vo2, VertexOut & vo3)
 {
-
 	if (vo1.posH.x > vo2.posH.x)
 	{
 		std::swap(vo1, vo2);
 	}
 
-	Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  int((1.f - vo1.posH.y) * 0.5f * height) };
-	Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  int((1.f - vo2.posH.y) * 0.5f * height) };
-	Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  int((1.f - vo3.posH.y) * 0.5f * height) };
+	Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  ((1.f - vo1.posH.y) * 0.5f * height) };
+	Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  ((1.f - vo2.posH.y) * 0.5f * height) };
+	Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
 
-	int x1 = p1.x; int y1 = p1.y;
-	int x2 = p2.x; int y2 = p2.y;
-	int x3 = p3.x; int y3 = p3.y;
+	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
+	int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
+	int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
 
-	float dy = y3 - y1;
+	int dy1 = y3 - y1;
+	int dy2 = y3 - y2;
 	VertexOut start;
 	VertexOut end;
 	VertexOut vout;
@@ -488,29 +548,44 @@ void RenderContext::drawTopTriangle(VertexOut & vo1, VertexOut & vo2, VertexOut 
 		z1 = vo1.posH.z;
 		z2 = vo2.posH.z;
 		z3 = vo3.posH.z;
-		float t1 = (y - y1) / dy;
-		ModelLerpFunction(start, vo1, vo2, t1, 1.f / z1, 1.f / z2);
-		ModelLerpFunction(end, vo1, vo3, t1, 1.f / z1, 1.f / z3);
+		int t1 = 0;
+		int t2 = 0;
+		if (dy1 != 0)
+		{
+			t1 = (float)(y - y1) / (float)dy1;
+			
+		};
+		if (dy2 != 0)
+		{
+			t2 = (float)(y - y2) / (float)dy2;
+		}
+		lerp(start, vo1, vo3, t1);
+		lerp(end, vo2, vo3, t2);
 		int xStart = x1 + (x3 - x1) * t1;
-		int xEnd = x2 + (x3 - x2) * t1;
+		int xEnd = x2 + (x3 - x2) * t2;
 		zStart = z1 + (z3 - z1) * t1;
-		zEnd = z2 + (z3 - z2) * t1;
+		zEnd = z2 + (z3 - z2) * t2;
+		int diffx = xEnd - xStart;
 		for (int x = xStart; x < xEnd; ++x)
 		{
 			currentPixelIndex = y * width + x;
-			float t = (x - xStart) / (xEnd - xStart);
+			float t = 0;
+			if (diffx != 0)
+			{
+				t = (float)(x - xStart) / (float)diffx;
+			}
 			float z = zStart + (zEnd - zStart) * t;
 			if (zbuffer[currentPixelIndex] < z)
 			{
 				continue;
 			}
 			zbuffer[currentPixelIndex] = z;
-			ModelLerpFunction(vout, start, end, (x - xStart) / (xEnd - xStart), zStart, zEnd);
+			lerp(vout, start, end, t);
 			Vector3f color = ps->execute(vout);
 			int red = color.x * 255;
 			int green = color.y * 255;
 			int blue = color.z * 255;
-			unsigned int colorValue = (255 << 16) + (0 << 8) + 0;
+			unsigned int colorValue = (red << 16) + (green << 8) + blue;
 			renderTarget[currentPixelIndex] = colorValue;
 		}
 
@@ -530,11 +605,12 @@ void RenderContext::drawBottomTriangle(VertexOut & vo1, VertexOut & vo2, VertexO
 	Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  ((1.f - vo2.posH.y) * 0.5f * height) };
 	Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
 
-	int x1 = p1.x; int y1 = p1.y;
-	int x2 = p2.x; int y2 = p2.y;
-	int x3 = p3.x; int y3 = p3.y;
+	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
+	int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
+	int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
 	
-	float dy = y2 - y1;
+	int dy1 = y2 - y1;
+	int dy2 = y3 - y1;
 	VertexOut start;
 	VertexOut end;
 	VertexOut vout;
@@ -545,33 +621,46 @@ void RenderContext::drawBottomTriangle(VertexOut & vo1, VertexOut & vo2, VertexO
 		z1 = vo1.posH.z;
 		z2 = vo2.posH.z;
 		z3 = vo3.posH.z;
-		float t1 = (y - y1) / dy;
-		ModelLerpFunction(start, vo1, vo2, t1, 1.f / z1, 1.f / z2);
-		ModelLerpFunction(end, vo1, vo3, t1, 1.f / z1, 1.f / z3);
+		float t1 = 0;
+		float t2 = 0;
+		if (dy1 != 0)
+		{
+			t1 = (float)(y - y1) / (float)dy1;
+		}
+		if (dy2 != 0)
+		{
+			t2 = (float)(y - y1) / (float)dy2;
+		}
+		lerp(start, vo1, vo2, t1);
+		lerp(end, vo1, vo3, t2);
 		int xStart = x1 + (x2 - x1) * t1;
-		int xEnd = x1 + (x3 - x1) * t1;
+		int xEnd = x1 + (x3 - x1) * t2;
 		zStart = z1 + (z2 - z1) * t1;
-		zEnd = z1 + (z3 - z1) * t1;
+		zEnd = z1 + (z3 - z1) * t2;
+		int diffx = xEnd - xStart;
 		for (int x = xStart; x < xEnd; ++x)
 		{
 			currentPixelIndex = y * width + x;
-			float t = (x - xStart) / (xEnd - xStart);
+			
+			float t = 0;
+			if (diffx != 0)
+			{
+				t = (float)(x - xStart) / (float)diffx;
+			}
 			float z = zStart + (zEnd - zStart) * t;
 			if (zbuffer[currentPixelIndex] < z)
 			{
 				continue;
 			}
 			zbuffer[currentPixelIndex] = z;
-			ModelLerpFunction(vout, start, end, t, 1.f / zStart, 1.f / zEnd);
+			lerp(vout, start, end, t);
 			Vector3f color = ps->execute(vout);
 			int red = color.x * 255;
 			int green = color.y * 255;
 			int blue = color.z * 255;
-			unsigned int colorValue = (255 << 16) + (0 << 8) + 0;
-			renderTarget[currentPixelIndex] = colorValue;
+			unsigned int colorValue = (red << 16) + (green << 8) + blue;
 		}
 
 	}
 }
 
-*/

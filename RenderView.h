@@ -1,7 +1,6 @@
 #pragma once
 
-#include <QWidget>
-#include <qpen.h>
+#include <QtWidgets/qwidget.h>
 class Scene;
 
 class RenderView : public QWidget
@@ -25,5 +24,4 @@ private:
 	bool m_interact;
 	int m_lastX;
 	int m_lastY;
-	QPen m_pen;
 };

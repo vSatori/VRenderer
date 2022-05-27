@@ -16,14 +16,14 @@ public:
 	Matrix4 getOrthogonalMatrix(float w, float h, float n, float f);
 protected:
 	void drawMesh(const Mesh& mesh);
-	void drawMesh(const Mesh& mesh, const std::vector<VertexOut>& vertexBuff);
+	void drawMesh(const Mesh& mesh, VertexOut* vertexBuff);
 public:
 	Camera camera;
 	float nearPlane;
 	float farPlane;
 	float fov;
 protected:
-	int m_frameFactor;
+	float m_frameFactor;
 };
 
 class DynamicEnviromentMappingScene : public Scene
@@ -37,15 +37,14 @@ private:
 	void render(bool drawRelect);
 private:
 	SkyBox m_sky;
-	std::unique_ptr<DynamicCubeMap> m_envCubeMap;
-	std::vector<Mesh> m_movingSpheres;
-	std::vector<Vector3f> m_sphereColors;
 	Mesh m_reflectSphere;
+	std::vector<Mesh> m_movingSpheres;
+	std::unique_ptr<DynamicCubeMap> m_envCubeMap;
+	ReflectPixelShader*  m_reflectPS;
 	GenericVertexShader* m_sphereVS;
-	GenericPixelShader* m_spherePS;
-	SkyVertexShader* m_skyVS;
-	SkyPixelShader* m_skyPS;
-	Light* m_light;
+	GenericPixelShader*  m_spherePS;
+	SkyVertexShader*     m_skyVS;
+	SkyPixelShader*      m_skyPS;
 };
 
 class ShadowMappingScene : public Scene
@@ -62,13 +61,13 @@ private:
 private:
 	Mesh m_sphere;
 	Mesh m_ground;
-	GenericVertexShader* m_sphereVS;
-	GenericPixelShader* m_spherePS;
+	GenericVertexShader*   m_sphereVS;
+	GenericPixelShader*    m_spherePS;
 	ShadowMapVertexShader* m_shadowVS;
-	DirectionalLight* m_light;
-	DepthTexture* m_depthTexture;
-	Matrix4 m_lightWorld;
-	Vector3f m_lightPosition;
+	DirectionalLight*      m_light;
+	DepthTexture*          m_depthTexture;
+	Matrix4                m_lightWorld;
+	Vector3f               m_lightPosition;
 };
 
 class PmxModelScene : public Scene
@@ -83,4 +82,28 @@ private:
 	GenericVertexShader* m_VS;
 	DirectionalLight* m_light;
 };
+/*
 
+#include "wave.h"
+class OceanWaveScene : public Scene
+{
+public:
+	OceanWaveScene();
+	~OceanWaveScene();
+public:
+	virtual void render()override;
+private:
+	void generateWave();
+private:
+	Wave* m_wave;
+	Mesh m_waveModel;
+	float m_time;
+	float m_maxHeight;
+	float m_minHeight;
+	GenericVertexShader* m_VS;
+	OceanWavePixelShader* m_PS;
+	GenericPixelShader* m_PS2;
+	DirectionalLight* m_light;
+};
+
+*/

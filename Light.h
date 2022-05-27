@@ -1,25 +1,23 @@
 #pragma once
 #include "MathUtil.h"
 #include <functional>
+struct Material;
 
 
-using LightFunction = std::function<Vector3f(const Vector3f&, const Vector3f&, const Vector3f&, float shadow)>;
+using LightFunction = std::function<Vector3f(const Vector3f&, const Vector3f&, const Vector3f&, const Material& material, float shadow)>;
 
 struct Light
 {
 
 public:
-	Vector3f compute(const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal, float shadow)
+	Vector3f compute(const Vector3f& eye, const Vector3f& vertexPos, const Vector3f& normal, const Material& material, float shadow)
 	{
-		return function(eye, vertexPos, normal, shadow);
+		return function(eye, vertexPos, normal, material, shadow);
 	}
 public:
 	Vector3f ambient;
-	float ambientFactor;
 	Vector3f diffuse;
-	float diffuseFactor;
 	Vector3f specular;
-	float specularFactor;
 	Vector3f pos;
 	LightFunction function;
 };

@@ -45,8 +45,8 @@ void Texture::setRowData(unsigned int * data, int width, int height)
 
 Vector3f Texture::sample(float u, float v)
 {
-	int x = u * m_maxWidthIndex + 0.5f;
-	int y = v * m_maxHeightIndex + 0.5f;
+	int x = static_cast<int>(u * m_maxWidthIndex + 0.5f);
+	int y = static_cast<int>(v * m_maxHeightIndex + 0.5f);
 	return m_components[y * m_width + x];
 }
 
@@ -94,6 +94,12 @@ CubeMap::CubeMap(const std::vector<std::string>& files)
 		m_textures[static_cast<Direction>(i)] = std::make_unique<Texture>(files[i].c_str());
 
 	}
+	m_back = m_textures[Direction::BACK].get();
+	m_front = m_textures[Direction::FRONT].get();
+	m_left = m_textures[Direction::LEFT].get();
+	m_right = m_textures[Direction::RIGHT].get();
+	m_top = m_textures[Direction::TOP].get();
+	m_bottom = m_textures[Direction::BOTTOM].get();
 }
 
 Vector3f CubeMap::sample(const Vector3f & dir)
@@ -115,12 +121,14 @@ Vector3f CubeMap::sample(const Vector3f & dir)
 			x = 1.f - (dir.z / maxValue + 1.f) / 2.f;
 			y = 1.f - (dir.y / maxValue + 1.f) / 2.f;
 			direction = Direction::RIGHT;
+			//return m_right->sample(x, y);
 		}
 		else
 		{
 			x = (dir.z / maxValue + 1.f) / 2.f;
 			y = 1.f - (dir.y / maxValue + 1.f) / 2.f;
 			direction = Direction::LEFT;
+			//return m_left->sample(x, y);
 		}
 	}
 	else if (maxValue == absy)
@@ -130,12 +138,14 @@ Vector3f CubeMap::sample(const Vector3f & dir)
 			x = (dir.x / maxValue + 1.f) / 2.f;
 			y = (dir.z / maxValue + 1.f) / 2.f;
 			direction = Direction::TOP;
+			//return m_top->sample(x, y);
 		}
 		else
 		{
 			x = (dir.x / maxValue + 1.f) / 2.f;
 			y = 1.f - (dir.z / maxValue + 1.f) / 2.f;
 			direction = Direction::BOTTOM;
+			//return m_bottom->sample(x, y);
 		}
 	}
 	else 
@@ -145,6 +155,7 @@ Vector3f CubeMap::sample(const Vector3f & dir)
 			x = (dir.x/ maxValue + 1.f) / 2.f;
 			y = 1.f - (dir.y / maxValue + 1.f) / 2.f;
 			direction = Direction::BACK;
+			//return m_back->sample(x, y);
 		}
 		
 		else
@@ -152,9 +163,12 @@ Vector3f CubeMap::sample(const Vector3f & dir)
 			x = 1.f - (dir.x / maxValue + 1.f) / 2.f;
 			y = (1.f - dir.y / maxValue) / 2.f;
 			direction = Direction::FRONT;
+			//return m_front->sample(x, y);
 		}
 	}
-	return m_textures[direction]->sample(x, y);
+
+	auto tex = m_textures[direction].get();
+	return tex->sample(x, y);
 }
 
 
@@ -262,19 +276,23 @@ void DepthTexture::setRowData(float * data, int width, int height)
 	{
 		delete[] m_rowData;
 	}
-	m_width = width;
-	m_height = height;
+	setSize(width, height);
 	int size = m_width * m_height;
 	m_rowData = new float[size];
 	memcpy(m_rowData, data, size * sizeof(float));
-
-
-
 }
 
 float DepthTexture::sample(float u, float v)
 {
-	int x = u * m_width + 0.5;
-	int y = v * m_height + 0.5;
+	int x = u * m_maxWidthIndex + 0.5;
+	int y = v * m_maxHeightIndex + 0.5;
 	return m_rowData[y * m_width + x];
+}
+
+void DepthTexture::setSize(int w, int h)
+{
+	m_width = w;
+	m_height = h;
+	m_maxWidthIndex = w - 1;
+	m_maxHeightIndex = h - 1;
 }

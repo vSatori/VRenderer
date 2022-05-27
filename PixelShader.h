@@ -17,26 +17,18 @@ public:
 	{
 		return function(vout);
 	}
-	inline Vector3f getColor(const VertexOut& out)
-	{
-		Vector3f color{ 0.f, 1.f, 1.f };
-		return color;
-	}
 public:
 	PSFunction function;
-	Vector3f eyePos;
 };
 
 struct GenericPixelShader : public PixelShader
 {
 public:
-	bool reflect = false;
 	float alpha = 1.f;
 	Vector3f color; 
-	DynamicCubeMap* envCubeMap = nullptr;
+	Material material;
 	Texture* texture = nullptr;
-	Light* light;
-	std::vector<Matrix4> matLitViews;
+	Light* light = nullptr;
 	DepthTexture* depthTexture = nullptr;
 };
 
@@ -46,9 +38,24 @@ public:
 	CubeMap* cubeMap = nullptr;
 };
 
+struct ReflectPixelShader : public PixelShader
+{
+public:
+	DynamicCubeMap* envCubeMap = nullptr;
+};
+
+
+struct OceanWavePixelShader : public PixelShader
+{
+public:
+	float maxHeight;
+	float minHeight;
+	DirectionalLight* light;
+};
+
 PSFunction makeGenericPSFunction(GenericPixelShader* shader);
-
-
+PSFunction makeReflectPixelShader(ReflectPixelShader* shader);
 PSFunction makeSkyPSFunction(SkyPixelShader* shader);
+PSFunction makeOceanWavePSFunction(OceanWavePixelShader* shader);
 
 

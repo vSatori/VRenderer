@@ -1,5 +1,6 @@
 #pragma once
 #include "Mesh.h"
+#include <QtCore/qdebug.h>
 class MeshFactory
 {
 public:
@@ -118,8 +119,8 @@ public:
 				vec.y = radius * cosf(phi);
 				vec.z = radius * sinf(phi) * sinf(theta);
 				Vector3f normal = vec;
-				normal.normalize();
-				mesh.vertices.push_back({ vec, normal, {theta / (pi * 2.f), phi / pi} });
+ 				normal.normalize();
+				mesh.vertices.push_back({ vec, normal, {theta / (pi * 2.f), phi / pi} });;
 			}
 		}
 		Vertex lastVertex = { {0.f, -radius, 0.f},{0.f, -1.f, 0.f}, {0.f, 1.f} };
