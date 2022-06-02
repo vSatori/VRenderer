@@ -17,8 +17,6 @@ public:
 	Matrix4 projection;
 	Matrix4 vp;
 	Matrix3 world3;
-	bool computeDepth = true;
-	bool computeNormal = true;
 };
 
 
@@ -35,8 +33,6 @@ class SkyVertexShader : public VertexShader
 
 class ShadowMapVertexShader: public VertexShader
 {
-public:
-
 };
 
 

@@ -4,17 +4,35 @@
 #include <Windows.h>
 #include "Scene.h"
 #include "RenderView.h"
+#include "RayTracingScene.h"
 #include <QTcore/qdebug.h>
 #include <iostream>
 #include <xmmintrin.h>
 #include <iostream>
 
-bool isExit = false;
+#include <random>
+
+static float rand_double()
+{
+	std::random_device rd;
+	std::uniform_real_distribution<double> dist(0.0, 1.0);
+	std::mt19937 gen(rd());
+	float r = dist(gen);
+	return r;
+}
+
+
+std::vector<double> ds;
+
+static bool isExit = false;
 int main(int argc, char *argv[])
 {
+
+
+
 	QApplication a(argc, argv);
 	RenderView view;
-	DynamicEnviromentMappingScene scene;
+	RayTracingScene scene;
 	view.setScene(&scene);
 	QTimer timer;
 	timer.setInterval(500);
@@ -41,7 +59,7 @@ int main(int argc, char *argv[])
 		});
 	view.show();
 	view.renderScene();
-	timer.start();
+	//timer.start();
     a.exec();
 	isExit = true;
 	return 0;

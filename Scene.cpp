@@ -275,14 +275,14 @@ ShadowMappingScene::ShadowMappingScene()
 	m_ground.material.specular = { 0.5f, 0.5f, 0.5f };
 	m_ground.material.shininess = 32;
 
-	DirectionalLight* left = new DirectionalLight;
-	left->function = makeComputeDirectLightFunction(left);
-	left->ambient = { 0.1f, 0.1f, 0.1f };
-	left->diffuse = { 0.5f, 0.5f, 0.5f };
-	left->specular = { 1.f, 1.f, 1.f };
-	left->direction = { 0.f, -1.f, 1.f };
-	left->pos = { 0.f, 100.f, -100.f };
-	m_light = left;
+	DirectionalLight* light = new DirectionalLight;
+	light->function = makeComputeDirectLightFunction(light);
+	light->ambient = { 0.1f, 0.1f, 0.1f };
+	light->diffuse = { 0.5f, 0.5f, 0.5f };
+	light->specular = { 1.f, 1.f, 1.f };
+	light->direction = { 0.f, -1.f, 1.f };
+	light->pos = { 0.f, 100.f, -100.f };
+	m_light = light;
 	m_spherePS->light = m_light;
 
 	m_depthTexture = new DepthTexture;
@@ -386,7 +386,7 @@ void ShadowMappingScene::renderScene()
 {
 	RenderContext::clear();
 	camera.update();
-	RenderContext::eyePos = camera.pos;
+	RenderContext::eyePos   = camera.pos;
 	RenderContext::cullMode = CullMode::CULLBACKFACE;
 
 	RenderContext::vs = m_sphereVS;
@@ -406,13 +406,11 @@ void ShadowMappingScene::renderScene()
 	
 	m_sphereVS->world = Transform::translate(0.f, -1.7f, 0.f);
 	m_sphereVS->world3 = Matrix4To3(m_sphereVS->world);
-	//m_spherePS->color = Vector3f{ 0.9f, 0.9f, 0.9f };
 	m_spherePS->material = m_ground.material;
 	drawMesh(m_ground);
 
 	m_sphereVS->world.init();
 	m_sphereVS->world3 = Matrix4To3(m_sphereVS->world);
-	//m_spherePS->color = Vector3f{ 1.f, 0.f, 0.f };
 	m_spherePS->material = m_sphere.material;
 	drawMesh(m_sphere);
 }

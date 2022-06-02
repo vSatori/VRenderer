@@ -234,19 +234,19 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 			}
 
 			Vector3f color = ps->execute(vout);
-\
+
 			float* pc = (float*)&color;
 			for (int i = 0; i < 3; ++i)
 			{
-				if (*(pc + i) > 1.f)
+				if (pc[i] > 1.f)
 				{
-					*(pc + i) = 1.f;
+					pc[i] = 1.f;
 				}
 			}
-			int red = static_cast<int>(color.x * 255.f);
+			int red   = static_cast<int>(color.x * 255.f);
 			int green = static_cast<int>(color.y * 255.f);
-			int blue = static_cast<int>(color.z * 255.f);
-			unsigned int colorValue = (red << 16) + (green << 8) + blue;
+			int blue  = static_cast<int>(color.z * 255.f);
+			int colorValue = (red << 16) + (green << 8) + blue;
 			renderTarget[currentPixelIndex] = colorValue;
 		}
 	}
@@ -333,7 +333,6 @@ std::vector<VertexOut> RenderContext::polygonClipping(const VertexOut& vo1, cons
 		}
 	}
 	return output;
-	return std::vector<VertexOut>();
 }
 
 VertexOut RenderContext::clipPlane(const VertexOut& vo1, const VertexOut& vo2, int side)
@@ -440,7 +439,7 @@ static void lerp(VertexOut& vo, const VertexOut& vo1, const VertexOut& vo2, floa
 	float* pv = (float*)(&vo);
 	const float* pv1 = (const float*)(&vo1);
 	const float* pv2 = (const float*)(&vo2);
-	for (int i = 0; i < 19; ++i)
+	for (int i = 0; i < VertexOut::floatSize; ++i)
 	{
 		pv[i] = pv1[i] + (pv2[i] - pv1[i]) * t;
 	}

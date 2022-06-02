@@ -37,8 +37,8 @@ public:
 	static bool posArea;
 	static unsigned int* renderTarget;
 	static float* zbuffer;
-	static const int width = 1280;
-	static const int height = 720;
+	static const int width = 800;
+	static const int height = 600;
 	static Vector3f eyePos;
 	static float nearPlane;
 	static float farPlane;

@@ -7,9 +7,6 @@
 
 using PSFunction = std::function<Vector3f(const VertexOut&)>;
 
-
-
-
 struct PixelShader
 {
 public:
