@@ -7,15 +7,20 @@ omp_init_lock(&lock);
 #endif // _omp
 */
 
+static unsigned int whiteValue = (255 << 16) + (255 << 8) + 255;
+static unsigned int redValue = (255 << 16);
+
 const float RenderContext::clipW = 0.00001f;
 CullMode RenderContext::cullMode = CullMode::CULLBACKFACE;
-FillMode RenderContext::fillMode = FillMode::SOLID;
+FillMode RenderContext::fillMode = FillMode::WIREFRAME;
 DepthMode RenderContext::depthMode = DepthMode::LESS;
 bool RenderContext::alphaBlending = false;
 bool RenderContext::drawColor = true;
-bool RenderContext::posArea = false;
+bool RenderContext::clockwise = true;
+Vector3f* RenderContext::pixels = nullptr;
 unsigned int* RenderContext::renderTarget = nullptr;
 float* RenderContext::zbuffer = nullptr;
+bool* RenderContext::pixelMask = nullptr;
 Vector3f RenderContext::eyePos = { 0.f, 0.f, 0.f };
 float RenderContext::nearPlane = 0.f;
 float RenderContext::farPlane = 100.f;
@@ -28,8 +33,10 @@ void RenderContext::init()
 {
 	cullMode = CullMode::CULLBACKFACE;
 	fillMode = FillMode::SOLID;
+	//pixels = new Vector3f[width * height];
 	renderTarget = new unsigned int[width * height];
 	zbuffer = new float[width * height];
+	//pixelMask = new bool[width * height * 4];
 	vs = nullptr;
 	ps = nullptr;
 }
@@ -48,24 +55,12 @@ void RenderContext::finalize()
 
 void RenderContext::clear()
 {
-	//memset(renderTarget, 0, width * height * 4);
-
-		//memset(zbuffer, 1, width * height * 4);
-
-	for (int i = 0; i < height; ++i)
+	int count = width * height;
+	
+	for (int i = 0; i < count; ++i)
 	{
-		for (int j = 0; j < width; ++j)
-		{
-			renderTarget[i * width + j] = whiteValue;
-		}
-	}
-
-	for (int i = 0; i < height; ++i)
-	{
-		for (int j = 0; j < width; ++j)
-		{
-			zbuffer[i * width + j] = 1.00001f;
-		}
+		renderTarget[i] = whiteValue;
+		zbuffer[i] = 1.00001f;
 	}
 }
 
@@ -79,11 +74,27 @@ bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 	}
 	case CullMode::CULLFRONTFACE:
 	{
-		return faceNormal.dot(eyePos - vertexPos) <= 0;
+		bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
+		if (clockwise)
+		{
+			return !b;
+		}
+		return b;
+
+		//return ~((faceNormal.dot(eyePos - vertexPos) <= 0) ^ clockwise);
 	}
 	case CullMode::CULLBACKFACE:
 	{
-		return faceNormal.dot(eyePos - vertexPos) >= 0;
+	
+		bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
+		if (clockwise)
+		{
+			return b;
+		}
+		return !b;
+
+		//return ~((faceNormal.dot(eyePos - vertexPos) >= 0) ^ clockwise));
+		
 	}
 	default:
 	{
@@ -92,7 +103,7 @@ bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 	}
 }
 
-bool RenderContext::depthTest(float z)
+bool RenderContext::depthTest(float z, int index)
 {
 	switch (depthMode)
 	{
@@ -102,15 +113,15 @@ bool RenderContext::depthTest(float z)
 	}
 	case DepthMode::LESS:
 	{
-		return z < zbuffer[currentPixelIndex];
+		return z < zbuffer[index];
 	}
 	case DepthMode::EQUAL:
 	{
-		return z == zbuffer[currentPixelIndex];
+		return z == zbuffer[index];
 	}
 	case DepthMode::LESSEQUAL:
 	{
-		return z <= zbuffer[currentPixelIndex];
+		return z <= zbuffer[index];
 	}
 	case DepthMode::ALWAYS:
 	{
@@ -120,6 +131,41 @@ bool RenderContext::depthTest(float z)
 		return false;
 	}
 	return false;
+}
+
+void RenderContext::draw(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
+{
+	switch (fillMode)
+	{
+	case FillMode::SOLID:
+	{
+		drawFragment(vo1, vo2, vo3);
+		break;
+	}
+	case FillMode::WIREFRAME:
+	{
+		Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  ((1.f - vo1.posH.y) * 0.5f * height) };
+		Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  ((1.f - vo2.posH.y) * 0.5f * height) };
+		Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
+		int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
+		int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
+		int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
+		int h = height - 1;
+		int w = width  - 1;
+		x1 = clamp(0, w, x1);
+		x2 = clamp(0, w, x2);
+		x3 = clamp(0, w, x3);
+		y1 = clamp(0, h, y1);
+		y2 = clamp(0, h, y2);
+		y3 = clamp(0, h, y3);
+		drawLine(x1, y1, x2, y2);
+		drawLine(x2, y2, x3, y3);
+		drawLine(x3, y3, x1, y1);
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 bool RenderContext::checkClipping(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3)
@@ -148,7 +194,8 @@ bool RenderContext::checkClipping(const Vector4f& v1, const Vector4f& v2, const 
 	{
 		return true;
 	}
-	if (v1.w < clipW || v2.w < clipW || v3.w < clipW)
+	float w = clipW > nearPlane ? clipW : nearPlane;
+	if (v1.w < w || v2.w < w || v3.w < w)
 	{
 		return true;
 	}
@@ -162,12 +209,16 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 	Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
 
 	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
-	int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
+    int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
 	int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
+
+	//int x1 = static_cast<int>(p1.x); int y1 = static_cast<int>(p1.y);
+	//int x2 = static_cast<int>(p2.x); int y2 = static_cast<int>(p2.y);
+	//int x3 = static_cast<int>(p3.x); int y3 = static_cast<int>(p3.y);
 
 	int minx = std::max(findMin(x1, x2, x3), 1);
 	int miny = std::max(findMin(y1, y2, y3), 1);
-	int maxx = std::min(findMax(x1, x2, x3), width - 1);
+	int maxx = std::min(findMax(x1, x2, x3), width  - 1);
 	int maxy = std::min(findMax(y1, y2, y3), height - 1);
 
 	VertexOut vout;
@@ -176,16 +227,18 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 	const float* pVo1 = (const float*)&vo1;
 	const float* pVo2 = (const float*)&vo2;
 	const float* pVo3 = (const float*)&vo3;
+
+	//Vector2f samples[4] = { {-0.125f, -0.375f}, {0.375f, -0.125f}, {-0.375f, 0.125f}, {0.125f, 0.375f} };
 	for (int y = miny; y <= maxy; ++y)
 	{
 		for (int x = minx; x <= maxx; ++x)
 		{
-			Vector2f p{ static_cast<float>(x), static_cast<float>(y)};
+			Vector2f p{ static_cast<float>(x), static_cast<float>(y) };
 			float areaA = ((p - p2).corss(p3 - p2));
 			float areaB = ((p - p3).corss(p1 - p3));
 			float areaC = ((p - p1).corss(p2 - p1));
 
-			if (!posArea)
+			if (clockwise)
 			{
 				bool okA = areaA < 0.00001f;
 				bool okB = areaB < 0.00001f;
@@ -214,11 +267,12 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 
 			float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
 			currentPixelIndex = width * y + x;
-			if (!depthTest(z))
+			if (!depthTest(z, currentPixelIndex))
 			{
 				continue;
 			}
 			zbuffer[currentPixelIndex] = z;
+			
 			if (!drawColor)
 			{
 				continue;
@@ -234,7 +288,6 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 			}
 
 			Vector3f color = ps->execute(vout);
-
 			float* pc = (float*)&color;
 			for (int i = 0; i < 3; ++i)
 			{
@@ -243,46 +296,86 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 					pc[i] = 1.f;
 				}
 			}
+		
 			int red   = static_cast<int>(color.x * 255.f);
 			int green = static_cast<int>(color.y * 255.f);
 			int blue  = static_cast<int>(color.z * 255.f);
 			int colorValue = (red << 16) + (green << 8) + blue;
 			renderTarget[currentPixelIndex] = colorValue;
+			
 		}
 	}
-} 
-
-static void sort(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3)
-{
-	if (vo1.posH.y > vo2.posH.y)
-	{
-		if (vo2.posH.y > vo3.posH.y)
-		{
-			return;
-		}
-		if (vo1.posH.y > vo3.posH.y)
-		{
-			std::swap(vo2, vo3);
-			return;
-		}
-		std::swap(vo1, vo3);
-		return;
-	}
-	if (vo2.posH.y > vo3.posH.y)
-	{
-		if (vo1.posH.y > vo3.posH.y)
-		{
-			std::swap(vo1, vo2);
-			return;
-		}
-		std::swap(vo1, vo2);
-		std::swap(vo2, vo3);
-		return;
-
-	}
-	std::swap(vo1, vo3);
-	std::swap(vo2, vo3);
 }
+void RenderContext::resolve()
+{
+	
+	for (int y = 0; y < height; ++y)
+	{
+		for (int x = 0; x < width; ++x)
+		{
+			int index = y * width + x;
+			int count = 0;
+			float coef = 0.f;
+			for (int i = 0; i < 4; ++i)
+			{
+				if (pixelMask[index * 4 + i])
+				{
+					coef += 1.f;
+				}
+			}
+			coef /= 4.f;
+			Vector3f& color = pixels[index];
+			color *= coef;
+			int r = color.x * 255.f;
+			int g = color.y * 255.f;
+			int b = color.z * 255.f;
+			renderTarget[index] = (r << 16) + (g << 8) + b;
+		}
+	}
+}
+void RenderContext::drawLine(int x1, int y1, int x2, int y2)
+{
+	bool steep = false;
+	if (std::abs(x1 - x2) < std::abs(y1 - y2))
+	{
+		std::swap(x1, y1);
+		std::swap(x2, y2);
+		steep = true;
+	}
+
+	if (x1 > x2) 
+	{
+		std::swap(x1, x2);
+		std::swap(y1, y2);
+	}
+
+	int dx = x2 - x1;
+	int dy = y2 - y1;
+	int derror2 = std::abs(dy) * 2;
+	int error2 = 0;
+	int y = y1;
+	int index = 0;
+	for (int x = x1; x <= x2; x++)
+	{
+		if (steep)
+		{
+			renderTarget[y + width * x] = redValue;
+		}
+		else
+		{
+			renderTarget[x + width * y] = redValue;
+		}
+		error2 += derror2;
+		if (error2 > dx)
+		{
+			y += (y2 > y1 ? 1 : -1);
+			error2 -= dx * 2;
+		}
+		++index;
+	}
+}
+
+
 
 std::vector<VertexOut> RenderContext::polygonClipping(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
 {
@@ -316,8 +409,6 @@ std::vector<VertexOut> RenderContext::polygonClipping(const VertexOut& vo1, cons
 		{
 			auto& current = input[j];
 			auto& last = input[(j + size - 1) % size];
-
-
 			if (inside(current.posH, i))
 			{
 				if (!inside(last.posH, i))
@@ -384,8 +475,15 @@ VertexOut RenderContext::clipPlane(const VertexOut& vo1, const VertexOut& vo2, i
 
 VertexOut RenderContext::clipWPlane(const VertexOut& vo1, const VertexOut& vo2)
 {
-	float t = (vo1.posH.w - clipW) / (vo1.posH.w - vo2.posH.w);
-	return vo1 + (vo2 - vo1) * t;
+	float w = clipW > nearPlane ? clipW : nearPlane;
+	float t = (vo1.posH.w - w) / (vo1.posH.w - vo2.posH.w);
+	VertexOut vo =  vo1 + (vo2 - vo1) * t;
+	int i;
+	if (vo.posH.z < 0)
+	{
+		i = 5;
+	}
+	return vo;
 }
 
 bool RenderContext::inside(const Vector4f& pos, int side)
@@ -426,7 +524,8 @@ bool RenderContext::inside(const Vector4f& pos, int side)
 	}
 	case 6:
 	{
-		in = pos.w >= clipW;
+		float w = clipW > nearPlane ? clipW : nearPlane;
+		in = pos.w >= w;
 
 		break;
 	}
@@ -465,7 +564,7 @@ static void lerp(VertexOut& vo, const VertexOut& vo1, const VertexOut& vo2, floa
 }
 */
 
-
+/*
 void RenderContext::drawFragmentByScanLine(VertexOut & vo1, VertexOut & vo2, VertexOut & vo3)
 {
 	if (vo1.posH.y == vo2.posH.y)
@@ -662,4 +761,4 @@ void RenderContext::drawBottomTriangle(VertexOut & vo1, VertexOut & vo2, VertexO
 
 	}
 }
-
+*/

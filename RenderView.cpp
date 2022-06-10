@@ -4,6 +4,8 @@
 #include "Scene.h"
 #include "RenderContext.h"
 
+extern bool exitApp;
+
 RenderView::RenderView(QWidget *parent)
 	: QWidget(parent), 
 	m_currentScene(nullptr), 
@@ -114,4 +116,10 @@ void RenderView::wheelEvent(QWheelEvent * event)
 	{
 		fov = 90.0f;
 	}
+}
+
+void RenderView::closeEvent(QCloseEvent* event)
+{
+	exitApp = true;
+	QWidget::closeEvent(event);
 }

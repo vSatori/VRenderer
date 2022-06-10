@@ -3,6 +3,8 @@
 #include <QtWidgets/qwidget.h>
 class Scene;
 
+
+
 class RenderView : public QWidget
 {
 public:
@@ -16,7 +18,8 @@ protected:
 	virtual void mousePressEvent(QMouseEvent* e)override;
 	virtual void mouseMoveEvent(QMouseEvent* e)override;
 	virtual void mouseReleaseEvent(QMouseEvent* e)override;
-	virtual void wheelEvent(QWheelEvent *event)override;
+	virtual void wheelEvent(QWheelEvent *e)override;
+	virtual void closeEvent(QCloseEvent* e)override;
 public:
 	unsigned int fps;
 private:

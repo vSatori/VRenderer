@@ -6,12 +6,8 @@ using VSFunction = std::function<VertexOut(const Vertex&)>;
 class VertexShader
 {
 public:
-	inline VertexOut execute(const Vertex& vin)
-	{
-		return function(vin);
-	}
+	virtual VertexOut execute(const Vertex& vin) = 0;
 public:
-	VSFunction function;
 	Matrix4 world;
 	Matrix4 view;
 	Matrix4 projection;
@@ -24,21 +20,20 @@ public:
 class GenericVertexShader : public VertexShader
 {
 public:
+	virtual VertexOut execute(const Vertex& vin);
+public:
 	Matrix4 shadow;
 };
 
 class SkyVertexShader : public VertexShader
 {
+public:
+	virtual VertexOut execute(const Vertex& vin);
 };
 
 class ShadowMapVertexShader: public VertexShader
 {
+public:
+	virtual VertexOut execute(const Vertex& vin);
 };
-
-
-VSFunction makeGenericVSFunction(GenericVertexShader* shader);
-
-VSFunction makeSkyVSFunction(SkyVertexShader* shader);
-
-VSFunction makeShadowMapVSFunction(ShadowMapVertexShader* shader);
 

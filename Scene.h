@@ -12,8 +12,6 @@ public:
 	~Scene();
 public:
 	virtual void render() = 0;
-	Matrix4 getProjectionMatrix();
-	Matrix4 getOrthogonalMatrix(float w, float h, float n, float f);
 protected:
 	void drawMesh(const Mesh& mesh);
 	void drawMesh(const Mesh& mesh, VertexOut* vertexBuff);
@@ -57,7 +55,7 @@ public:
 private:
 	void renderShadow();
 	void renderScene();
-	Matrix4 getShadowProjectionMatrix(const Matrix4& matView);
+	Matrix4 shadowProjection(const Matrix4& matView);
 private:
 	Mesh m_sphere;
 	Mesh m_ground;
@@ -77,10 +75,13 @@ public:
 public:
 	virtual void render()override;
 private:
-	std::vector<Mesh> m_keqing;
+	std::vector<Mesh> m_model;
+
+	Mesh m_bigBox;
+	Mesh m_lightBox;
 	GenericPixelShader* m_PS;
-	GenericVertexShader* m_VS;
-	DirectionalLight* m_light;
+	GenericVertexShader* m_VS; 
+	SpotLight* m_light;
 };
 /*
 
@@ -105,5 +106,4 @@ private:
 	GenericPixelShader* m_PS2;
 	DirectionalLight* m_light;
 };
-
 */

@@ -82,6 +82,6 @@ struct Mesh
 
 struct SkyBox : public Mesh
 {
-	std::unique_ptr<CubeMap> cubeMap;
+	std::unique_ptr<StaticCubeMap> cubeMap;
 };
 

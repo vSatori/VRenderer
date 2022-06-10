@@ -49,28 +49,30 @@ private:
 class CubeMap
 {
 public:
-	CubeMap(const std::vector<std::string>& files);
+	CubeMap();
 	enum class Direction{LEFT,RIGHT,TOP,BOTTOM,FRONT,BACK};
-public:
-	Vector3f sample(const Vector3f& dir);
-private:
-	std::map<Direction, std::unique_ptr<Texture>> m_textures;
-	Texture* m_front;
-	Texture* m_back;
-	Texture* m_left;
-	Texture* m_right;
-	Texture* m_top;
-	Texture* m_bottom;
+protected:
+	bool computeDirectionAndUV(const Vector3f& vec, Direction& dir, float& u, float& v);
+protected:
+	std::vector<std::unique_ptr<Texture>> m_textures;
 };
 
-class DynamicCubeMap
+
+class StaticCubeMap : public CubeMap
+{
+public:
+	StaticCubeMap(const std::vector<std::string>& files);
+public:
+	Vector3f sample(const Vector3f& dir);
+	
+};
+
+
+class DynamicCubeMap : public CubeMap
 {
 public:
 	DynamicCubeMap();
-	enum class Direction { LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK };
 public:
 	void setRowData(Direction dir, unsigned int* data, unsigned int width, unsigned int height);
 	unsigned int sample(const Vector3f& dir);
-private:
-	std::map<Direction, std::unique_ptr<Texture>> m_textures;
 };

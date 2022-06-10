@@ -2,6 +2,25 @@
 #include <string.h>
 #include <math.h>
 #define PI 3.1415926535f
+inline float radian(float angle)
+{
+	return PI / 180.f * angle;
+}
+
+template <typename T>
+inline T clamp(T min, T max, T value)
+{
+	if (value < min)
+	{
+		return min;
+	}
+	if (value > max)
+	{
+		return max;
+	}
+	return value;
+}
+
 struct Vector2f
 {
 public:
@@ -12,11 +31,11 @@ public:
 	}
 	inline float length() const
 	{
-		return sqrt(x * x + y * y);
+		return sqrtf(x * x + y * y);
 	}
 	inline void normalize()
 	{
-		float len = sqrt(x * x + y * y);
+		float len = length();
 		x /= len;
 		y /= len;
 	}
@@ -70,6 +89,12 @@ public:
 	}
 	float x = 0.f;
 	float y = 0.f;
+};
+
+struct Vector2i
+{
+	int x; 
+	int y;
 };
 
 struct Vector3i
@@ -166,6 +191,13 @@ struct Vector3f
 		x *= w;
 		y *= w;
 		z *= w;
+		return *this;
+	}
+	inline Vector3f operator/=(float w)
+	{
+		x /= w;
+		y /= w;
+		z /= w;
 		return *this;
 	}
 	float dot(const Vector3f& vec)const
@@ -435,6 +467,59 @@ public:
 		return res;
 	}
 
+	static inline Matrix4 lookAt(const Vector3f& position, const Vector3f& target, const Vector3f& up)
+	{
+		Matrix4 matrix;
+		Vector3f dir = target - position;
+		dir.normalize();
+
+		Vector3f t = up;
+		Vector3f post = up.cross(dir);
+		post.normalize();
+		t = dir.cross(post);
+
+		matrix.m[0][0] = post.x;
+		matrix.m[0][1] = post.y;
+		matrix.m[0][2] = post.z;
+		matrix.m[0][3] = -post.dot(position);
+
+		matrix.m[1][0] = t.x;
+		matrix.m[1][1] = t.y;
+		matrix.m[1][2] = t.z;
+		matrix.m[1][3] = -t.dot(position);
+
+		matrix.m[2][0] = dir.x;
+		matrix.m[2][1] = dir.y;
+		matrix.m[2][2] = dir.z;
+		matrix.m[2][3] = -dir.dot(position);
+
+		return matrix;
+	}
+
+	static inline Matrix4 perspectiveProjection(float w, float h, float fov, float n, float f)
+	{
+		Matrix4 mat;
+		float tanVar = tanf(radian(fov / 2));
+		float ratio = w / h;
+		mat.m[0][0] = 1.f / (ratio * tanVar);
+		mat.m[1][1] = 1.f / tanVar;
+		mat.m[2][2] = f / (f - n);
+		mat.m[2][3] = f * n / (n - f);
+		mat.m[3][2] = 1.f;
+		mat.m[3][3] = 0.f;
+		return mat;
+	}
+
+	static inline Matrix4 orthogonalProjection(float w, float h, float n, float f)
+	{
+		Matrix4 mat;
+		mat.m[0][0] = 2.f / w;
+		mat.m[1][1] = 2.f / h;
+		mat.m[2][2] = 1.f / (f - n);
+		mat.m[2][3] = n / (n - f);
+		return mat;
+	}
+
 public:
 	float m[4][4];
 };
@@ -494,17 +579,22 @@ inline int findMin(int v1, int v2, int v3)
 	return v3;
 }
 
-inline float radian(float angle)
-{
-	return 3.1415926f / 180.f * angle;
-}
 
-inline Vector3f toVector(unsigned int value)
+inline Vector3f bgr2Vector(unsigned int value)
 {
 	Vector3f color;
-	color.x = ((float)((value << 8) >> 24)) / 255.f;
+	color.x = ((float)((value << 8)  >> 24)) / 255.f;
 	color.y = ((float)((value << 16) >> 24)) / 255.f;
 	color.z = ((float)((value << 24) >> 24)) / 255.f;
+	return color;
+}
+
+inline Vector3f rgb2Vector(unsigned int value)
+{
+	Vector3f color;
+	color.x = ((float)((value << 24) >> 24)) / 255.f;
+	color.y = ((float)((value << 16) >> 24)) / 255.f;
+	color.z = ((float)((value << 8)  >> 24)) / 255.f;
 	return color;
 }
 

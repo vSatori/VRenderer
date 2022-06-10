@@ -10,16 +10,13 @@ using PSFunction = std::function<Vector3f(const VertexOut&)>;
 struct PixelShader
 {
 public:
-	inline Vector3f execute(const VertexOut& vout)
-	{
-		return function(vout);
-	}
-public:
-	PSFunction function;
+	virtual Vector3f execute(const VertexOut& vout) = 0;
 };
 
 struct GenericPixelShader : public PixelShader
 {
+public:
+	virtual Vector3f execute(const VertexOut& vout);
 public:
 	float alpha = 1.f;
 	Vector3f color; 
@@ -32,11 +29,15 @@ public:
 struct SkyPixelShader : public PixelShader
 {
 public:
-	CubeMap* cubeMap = nullptr;
+	virtual Vector3f execute(const VertexOut& vout);
+public:
+	StaticCubeMap* cubeMap = nullptr;
 };
 
 struct ReflectPixelShader : public PixelShader
 {
+public:
+	virtual Vector3f execute(const VertexOut& vout);
 public:
 	DynamicCubeMap* envCubeMap = nullptr;
 };
@@ -45,14 +46,12 @@ public:
 struct OceanWavePixelShader : public PixelShader
 {
 public:
+	virtual Vector3f execute(const VertexOut& vout);
+public:
 	float maxHeight;
 	float minHeight;
 	DirectionalLight* light;
 };
 
-PSFunction makeGenericPSFunction(GenericPixelShader* shader);
-PSFunction makeReflectPixelShader(ReflectPixelShader* shader);
-PSFunction makeSkyPSFunction(SkyPixelShader* shader);
-PSFunction makeOceanWavePSFunction(OceanWavePixelShader* shader);
 
 

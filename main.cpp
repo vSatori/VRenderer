@@ -10,38 +10,22 @@
 #include <xmmintrin.h>
 #include <iostream>
 
-#include <random>
-
-static float rand_double()
-{
-	std::random_device rd;
-	std::uniform_real_distribution<double> dist(0.0, 1.0);
-	std::mt19937 gen(rd());
-	float r = dist(gen);
-	return r;
-}
-
-
-std::vector<double> ds;
-
-static bool isExit = false;
+bool exitApp = false;
 int main(int argc, char *argv[])
 {
-
-
-
 	QApplication a(argc, argv);
 	RenderView view;
-	RayTracingScene scene;
+	PmxModelScene scene;
 	view.setScene(&scene);
 	QTimer timer;
 	timer.setInterval(500);
 	timer.setSingleShot(true);
 	unsigned int fps = 0;
 	unsigned long long diff = 0;
+
 	QObject::connect(&timer, &QTimer::timeout, [&view, &diff, &fps]()
 		{
-			while (!isExit)
+			while (!exitApp)
 			{
 				if (diff >= 1000)
 				{
@@ -55,12 +39,9 @@ int main(int argc, char *argv[])
 				diff += GetTickCount64() - s;
 				++fps;
 			}
-
 		});
 	view.show();
 	view.renderScene();
-	//timer.start();
-    a.exec();
-	isExit = true;
-	return 0;
+	timer.start();
+    return a.exec();
 }

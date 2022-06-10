@@ -94,7 +94,7 @@ public:
 	virtual bool scatter(const Ray& ray, const HitRecord& record, Vector3f& attenuation, Ray& scatter) const;
 public:
 	Vector3f albedo;
-	//float fuzz;
+	float fuzz;
 
 };
 
