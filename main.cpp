@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
 	RenderView view;
-	PmxModelScene scene;
+	OceanWaveScene scene;
 	view.setScene(&scene);
 	QTimer timer;
 	timer.setInterval(500);
@@ -42,6 +42,6 @@ int main(int argc, char *argv[])
 		});
 	view.show();
 	view.renderScene();
-	timer.start();
+	//timer.start();
     return a.exec();
 }

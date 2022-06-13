@@ -4,6 +4,7 @@
 #include "Light.h"
 #include "VertexShader.h"
 #include "PixelShader.h"
+#
 
 class Scene
 {
@@ -74,18 +75,19 @@ public:
 	PmxModelScene();
 public:
 	virtual void render()override;
+public:
+	bool onlyDrawPmxModel;
 private:
 	std::vector<Mesh> m_model;
-
 	Mesh m_bigBox;
 	Mesh m_lightBox;
 	GenericPixelShader* m_PS;
 	GenericVertexShader* m_VS; 
-	SpotLight* m_light;
+	PointLight* m_light;
 };
-/*
 
-#include "wave.h"
+
+#include "OceanWave.h"
 class OceanWaveScene : public Scene
 {
 public:
@@ -96,8 +98,7 @@ public:
 private:
 	void generateWave();
 private:
-	Wave* m_wave;
-	Mesh m_waveModel;
+	OceanWave* m_wave;
 	float m_time;
 	float m_maxHeight;
 	float m_minHeight;
@@ -106,4 +107,3 @@ private:
 	GenericPixelShader* m_PS2;
 	DirectionalLight* m_light;
 };
-*/

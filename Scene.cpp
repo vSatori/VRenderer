@@ -200,7 +200,7 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	{
 		m_sphereVS->world.init();
 		RenderContext::ps = m_reflectPS;
-		//drawMesh(m_reflectSphere);
+		drawMesh(m_reflectSphere);
 	}
 	RenderContext::ps = m_spherePS;
 	for (int index = 0; index < m_movingSpheres.size(); ++index)
@@ -210,7 +210,7 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 		float z = sinf(radian(m_frameFactor + index * 90.f)) * 6.f;
 		m_sphereVS->world = Transform::translate(x, 0.f, z);
 		m_spherePS->material = movingSphere.material;
-		//drawMesh(movingSphere);		
+		drawMesh(movingSphere);		
 	}
 	RenderContext::cullMode = CullMode::CULLNONE;
 	RenderContext::clockwise = true;
@@ -382,7 +382,7 @@ static std::string wstring2string(std::wstring wstr)
 	return result;
 }
 
-PmxModelScene::PmxModelScene()
+PmxModelScene::PmxModelScene() : onlyDrawPmxModel(false)
 {
 	const char *filename = "D:/Project/other/models/ganyu/¸ÊÓê.pmx";
 	std::wstring prepath = L"D:\\Project\\other\\models\\ganyu\\";
@@ -436,7 +436,7 @@ PmxModelScene::PmxModelScene()
 		m_model[i].texture = textures[material.diffuse_texture_index];
 	}
 
-	MeshFactory::createCube(m_bigBox, 40.f, 40.f, 200.f);
+	MeshFactory::createCube(m_bigBox, 40.f, 40.f, 40.f);
 	MeshFactory::flipMesh(m_bigBox);
 	m_bigBox.material.ambient = { 1.f, 1.f, 0.f };
 	m_bigBox.material.diffuse = { 1.f, 1.f, 0.f };
@@ -457,22 +457,16 @@ PmxModelScene::PmxModelScene()
 
 	
 
-	SpotLight* lit = new SpotLight;
+	PointLight* lit = new PointLight;
 	lit->ambient = { 0.2f, 0.2f, 0.2f };
 	lit->constant = 0.1f;
-	lit->linear = 0.05f;
-	lit->quadratic = 0.0032f;
-	lit->cutoff = 1.f;
-	lit->outcutoff = 3.f;
-	lit->spotFactor = 4.f;
-	lit->direction = { 0.f, 1.f, 1.f };
-	lit->direction.normalize();
+	lit->linear = 0.1f;
+	lit->quadratic = 0.0016f;
 	m_light = lit;
 
 	m_VS = new GenericVertexShader;
 	m_PS = new GenericPixelShader;
 	m_PS->color = { 0.f, 0.7f, 1.f };
-	m_PS->light = lit;
 }
 
 void PmxModelScene::render()
@@ -499,10 +493,6 @@ void PmxModelScene::render()
 	float x = cosf(radian(m_frameFactor)) * 8.f;
 	float y = 16.f;
 	float z = sinf(radian(m_frameFactor)) * 8.f;
-
-	x = 0;
-	y = 2;
-	z = -8;
 	m_light->pos = { x, y, z };
 
 	RenderContext::clear();
@@ -516,6 +506,7 @@ void PmxModelScene::render()
 	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
+	m_PS->light = onlyDrawPmxModel ? nullptr : m_light;
 
 	int vertexSize = m_model[0].vertices.size();
 	std::vector<VertexOut> buff;
@@ -530,7 +521,10 @@ void PmxModelScene::render()
 		m_PS->texture = m_model[i].texture.get();
 		drawMesh(m_model[i], (VertexOut*)&buff[0]);
 	}
-	
+	if (onlyDrawPmxModel)
+	{
+		return;
+	}
 	m_VS->world = Transform::translate(0.f, 20.f, 0.f);
 	m_PS->texture = nullptr;
 	m_PS->material = m_bigBox.material;
@@ -549,6 +543,7 @@ void PmxModelScene::render()
 	m_PS->material = m_lightBox.material;
 	m_PS->light = m_light;
 }
+
 #define MESH_RESOLUTION 64
 
 
@@ -564,24 +559,12 @@ float A = 3e-7f;
 float V = 30;
 // Wind direction
 Vector2f omega(1, 1);
-/*
+
 OceanWaveScene::OceanWaveScene(): m_time(0.f), m_maxHeight(0.f), m_minHeight(0.f)
 {
-	m_wave = new Wave(N, M, L_x, L_z, omega, V, A, 1);
-	int indexSize = (N - 1) * (M - 1) * 6;
-	m_waveModel.vertices.resize(N * M);
-	m_waveModel.indices.resize(indexSize);
-	auto& indices = m_waveModel.indices;
-	int index = 0;
-	for (int j = 0; j < N - 1; ++j)
-	{
-		for (int i = 0; i < M - 1; ++i)
-		{
-			indices[++index] = { i + j * N, i + (j + 1) * N, (i + 1) + j * N };
-			indices[++index] = { (i + 1) + j * N , i + (j + 1) * N, (i + 1) + (j + 1) * N };
-		}
-	}
-	Material& material = m_waveModel.material;
+	m_wave = new OceanWave(64, 64, 3e-7f, Vector2f{ 5, 5 }, 1000.f);
+
+	Material& material = m_wave->wave.material;
 	material.ambient = { 1.f, 1.f, 1.f };
 	material.diffuse = { 1.f, 0.2f, 0.1f };
 	material.specular = { 0.5f, 0.5f, 0.5f };
@@ -609,17 +592,13 @@ OceanWaveScene::OceanWaveScene(): m_time(0.f), m_maxHeight(0.f), m_minHeight(0.f
 	m_light->pos = { 0.f, 50.f, 100.f };
 
 	m_VS = new GenericVertexShader;
-	m_VS->function = makeGenericVSFunction(m_VS);
 	m_PS = new OceanWavePixelShader;
-	m_PS->function = makeOceanWavePSFunction(m_PS);
 	m_PS2 = new GenericPixelShader;
-	m_PS2->function = makeGenericPSFunction(m_PS2);
 	m_PS2->color = { 0.f, 0.7f, 1.f };
 	m_PS->light = m_light;;
 	m_PS2->light = m_light;
 	RenderContext::vs = m_VS;
 	RenderContext::ps = m_PS;
-	//RenderContext::posArea = true;
 
 	RenderContext::cullMode = CullMode::CULLBACKFACE;
 	RenderContext::fillMode = FillMode::SOLID;
@@ -643,42 +622,16 @@ void OceanWaveScene::render()
 	RenderContext::eyePos = camera.pos;
 	m_VS->world = Transform::scale(0.1f, 0.1f, 0.1f);
 	m_VS->world3 = Matrix4To3(m_VS->world);
-	m_VS->projection = getProjectionMatrix();
+	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
-	drawMesh(m_waveModel);
+	drawMesh(m_wave->wave);
 }
-#include <QtCore/qdebug.h>
-#undef max
+
 void OceanWaveScene::generateWave()
 {
 	int vertexSize = N * M;
-	m_wave->buildField(m_time);
-
-	auto& vertices = m_waveModel.vertices;
-	m_maxHeight = std::numeric_limits<float>::lowest();
-	m_minHeight = std::numeric_limits<float>::max();
-
-	for (int i = 0; i < N; ++i)
-	{
-		for (int j = 0; j < M; ++j)
-		{
-			int index = j * N + i;
-			auto& vertex = vertices[index];
-			vertex.pos = m_wave->heightField[index];		
-			vertex.normal = m_wave->normalField[index];
-			float height = m_wave->heightField[index].y;
-			if (height > m_maxHeight)
-			{
-				m_maxHeight = height;
-			}
-			else if (height < m_minHeight)
-			{
-				m_minHeight = height;
-			}
-		}
-	}
-	m_PS->maxHeight = m_maxHeight * 0.1f;
-	m_PS->minHeight = m_minHeight * 0.1f;
+	m_wave->update(m_time);
+	m_PS->maxHeight = m_wave->maxHeight * 0.1f;
+	m_PS->minHeight = m_wave->minHeight * 0.1f;
 }
-*/
