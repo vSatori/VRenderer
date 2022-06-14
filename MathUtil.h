@@ -36,6 +36,10 @@ public:
 	inline void normalize()
 	{
 		float len = length();
+		if (len <= 0.f)
+		{
+			return;
+		}
 		x /= len;
 		y /= len;
 	}

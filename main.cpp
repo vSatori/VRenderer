@@ -38,10 +38,11 @@ int main(int argc, char *argv[])
 				QApplication::processEvents();
 				diff += GetTickCount64() - s;
 				++fps;
+				Sleep(100);
 			}
 		});
 	view.show();
 	view.renderScene();
-	//timer.start();
+	timer.start();
     return a.exec();
 }

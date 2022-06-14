@@ -544,25 +544,13 @@ void PmxModelScene::render()
 	m_PS->light = m_light;
 }
 
-#define MESH_RESOLUTION 64
 
-
-// Mesh resolution
-int N = MESH_RESOLUTION;
-int M = MESH_RESOLUTION;
-float L_x = 1000;
-float L_z = 1000;
-
-
-float A = 3e-7f;
-// Wind speed
-float V = 30;
-// Wind direction
-Vector2f omega(1, 1);
 
 OceanWaveScene::OceanWaveScene(): m_time(0.f), m_maxHeight(0.f), m_minHeight(0.f)
 {
-	m_wave = new OceanWave(64, 64, 3e-7f, Vector2f{ 5, 5 }, 1000.f);
+	Vector2f wind{ 1.f, 1.f };
+	wind.normalize();
+	m_wave = new OceanWave(64, 64, 3e-7f, 1000.f, wind, 30.f);
 
 	Material& material = m_wave->wave.material;
 	material.ambient = { 1.f, 1.f, 1.f };
@@ -619,6 +607,7 @@ void OceanWaveScene::render()
 	RenderContext::clear();
 	camera.update();
 	
+	RenderContext::fillMode = FillMode::WIREFRAME;
 	RenderContext::eyePos = camera.pos;
 	m_VS->world = Transform::scale(0.1f, 0.1f, 0.1f);
 	m_VS->world3 = Matrix4To3(m_VS->world);
@@ -630,7 +619,6 @@ void OceanWaveScene::render()
 
 void OceanWaveScene::generateWave()
 {
-	int vertexSize = N * M;
 	m_wave->update(m_time);
 	m_PS->maxHeight = m_wave->maxHeight * 0.1f;
 	m_PS->minHeight = m_wave->minHeight * 0.1f;

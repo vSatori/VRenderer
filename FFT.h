@@ -1,8 +1,6 @@
 #pragma once
 #include <memory>
-class FFT
-{
-};
+#include "MathUtil.h"
 
 
 struct Complex
@@ -41,22 +39,26 @@ public:
 	{
 		a += other.a;
 		b += other.b;
+		return *this;
 	}
 	inline Complex operator-=(const Complex& other)
 	{
 		a -= other.a;
 		b -= other.b;
+		return *this;
 	}
 	inline Complex operator*=(const Complex& other)
 	{
 		a = a * other.a - b * other.b;
 		b = b * other.a + a * other.b;
+		return *this;
 	}
 	inline Complex operator/=(const Complex& other)
 	{
 		float d = (other.a * other.a + other.b * other.b);
 		a = (a * other.a + b * other.b) / d;
 		b = (b * other.a - a * other.b) / d;
+		return *this;
 	}
 	inline Complex conjugate()
 	{
@@ -68,8 +70,9 @@ public:
 	float a;
 	float b;
 };
-#define PI 3.1415926535
+
 #include <math.h>
+/*
 Complex omega(int n, int k, bool inverse = false)
 {
 	Complex res;
@@ -84,8 +87,8 @@ Complex omega(int n, int k, bool inverse = false)
 		return res.conjugate();
 	}
 }
-
-#define N 10
+*/
+/*
 void fft(Complex complex[], int n)
 {
 	if (n == 1)
@@ -120,5 +123,20 @@ void fft(Complex complex[], int n)
 	memcpy(complex, buff, sizeof(Complex) * (n + 1));
 
 }
-
-
+*/
+class FFT
+{
+public:
+	FFT(int N, bool idft);
+	~FFT();
+public:
+	int reverse(int i);
+	Complex t(unsigned int x, unsigned int N);
+	void execute(Complex* in, int stride, int offset);
+private:
+	int m_N;
+	bool m_idft;
+	int* m_reversed;
+	Complex* m_c;
+	Complex** m_t;
+};
