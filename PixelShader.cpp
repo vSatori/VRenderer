@@ -27,7 +27,7 @@ Vector3f GenericPixelShader::execute(const VertexOut& vout)
 		float shadow = 1.f;
 		if (depthTexture)
 		{
-			//shadow = computeShadow(vout.posD, depthTexture);
+			shadow = computeShadow(vout.posD, depthTexture);
 		}
 		color = light->compute(RenderContext::eyePos, vout.posW, vout.normalW, material, shadow);
 	}
@@ -37,7 +37,6 @@ Vector3f GenericPixelShader::execute(const VertexOut& vout)
 	}
 	Vector3f another = bgr2Vector(RenderContext::renderTarget[RenderContext::currentPixelIndex]);
 	return color * alpha + another * (1.f - alpha);
-	return Vector3f();
 }
 
 Vector3f SkyPixelShader::execute(const VertexOut& vout)
@@ -60,6 +59,7 @@ Vector3f ReflectPixelShader::execute(const VertexOut& vout)
 Vector3f OceanWavePixelShader::execute(const VertexOut& vout)
 {
 	Vector3f shallowColor{ 0.f, 0.64f, 0.68f };
+	//return shallowColor;
 	Vector3f deepColor{ 0.02f, 0.05f, 0.1f };
 	float diff = vout.posW.y - minHeight;
 	float height = (diff) / (maxHeight - minHeight);

@@ -1,6 +1,6 @@
 #include "FFT.h"
 
-FFT::FFT(int N, bool idft) : m_N(N), m_idft(true)
+FFT::FFT(int N, bool idft) : m_N(N), m_idft(idft)
 {
 	m_reversed = new int[N];
 	for (int i = 0; i < N; ++i)
@@ -34,6 +34,13 @@ FFT::FFT(int N, bool idft) : m_N(N), m_idft(true)
 
 FFT::~FFT()
 {
+	delete m_c;
+	int log2N = log2(m_N);
+	for (int i = 0; i < log2N; ++i)
+	{
+		delete m_t[i];
+	}
+	delete m_t;
 }
 
 int FFT::reverse(int i)
@@ -45,17 +52,17 @@ int FFT::reverse(int i)
 		if ((i >> j) & 1)
 		{
 			res |= (1 << (log2N - j - 1));
-		}
+		}	
 	}
 	return res;
 }
-
+#define PI 3.1415926535f
 Complex FFT::t(unsigned int x, unsigned int N)
 {
-	return Complex{ cosf(-1 * PI * 2 * x / m_N), sinf(-1 * PI * 2 * x) / m_N };
+	return Complex(cosf(PI * 2.f * x / N), sinf(PI * 2.f * x / N));
 }
 
-void FFT::execute(Complex* in, int stride, int offset)
+void FFT::execute(Complex* in, Complex* out, int stride, int offset)
 {
 	for (int i = 0; i < m_N; ++i)
 	{
@@ -78,6 +85,6 @@ void FFT::execute(Complex* in, int stride, int offset)
 	}
 	for (int i = 0; i < m_N; ++i)
 	{
-		in[i * stride + offset] = m_c[i];
+		out[i * stride + offset] = m_c[i];
 	}
 }

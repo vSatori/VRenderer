@@ -4,18 +4,21 @@
 #include <Windows.h>
 #include "Scene.h"
 #include "RenderView.h"
-#include "RayTracingScene.h"
-#include <QTcore/qdebug.h>
-#include <iostream>
-#include <xmmintrin.h>
-#include <iostream>
+#include <QtCore/qdebug.h>
 
 bool exitApp = false;
 int main(int argc, char *argv[])
 {
+	if (argc < 3)
+	{
+		return 0;
+	}
 	QApplication a(argc, argv);
 	RenderView view;
-	OceanWaveScene scene;
+	PmxModelScene scene(argv[1]);
+	bool useLight = (bool)(int(argv[2][0] - 48));
+	qDebug() << int(argv[2][0]);
+	scene.onlyDrawPmxModel = useLight;
 	view.setScene(&scene);
 	QTimer timer;
 	timer.setInterval(500);
@@ -38,7 +41,7 @@ int main(int argc, char *argv[])
 				QApplication::processEvents();
 				diff += GetTickCount64() - s;
 				++fps;
-				Sleep(100);
+				//Sleep(100);
 			}
 		});
 	view.show();

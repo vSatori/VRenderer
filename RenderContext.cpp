@@ -212,10 +212,6 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
     int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
 	int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
 
-	//int x1 = static_cast<int>(p1.x); int y1 = static_cast<int>(p1.y);
-	//int x2 = static_cast<int>(p2.x); int y2 = static_cast<int>(p2.y);
-	//int x3 = static_cast<int>(p3.x); int y3 = static_cast<int>(p3.y);
-
 	int minx = std::max(findMin(x1, x2, x3), 1);
 	int miny = std::max(findMin(y1, y2, y3), 1);
 	int maxx = std::min(findMax(x1, x2, x3), width  - 1);

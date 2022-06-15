@@ -64,7 +64,6 @@ struct Material
 	Vector3f diffuse{1.f, 1.f, 1.f};
 	Vector3f specular{1.f, 1.f, 1.f};
 	float shininess = 32.f;
-	bool reflect = false;
 };
 
 

@@ -382,10 +382,27 @@ static std::string wstring2string(std::wstring wstr)
 	return result;
 }
 
-PmxModelScene::PmxModelScene() : onlyDrawPmxModel(false)
+std::wstring string2wstring(std::string sToMatch)
 {
-	const char *filename = "D:/Project/other/models/ganyu/甘雨.pmx";
-	std::wstring prepath = L"D:\\Project\\other\\models\\ganyu\\";
+
+	int iWLen = MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), 0, 0); // 计算转换后宽字符串的长度。（不包含字符串结束符）
+	wchar_t* lpwsz = new wchar_t[iWLen + 1];
+	MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), lpwsz, iWLen); // 正式转换。
+	lpwsz[iWLen] = L'\0';
+	std::wstring wsToMatch(lpwsz);
+	delete[]lpwsz;
+	return wsToMatch;
+}
+
+PmxModelScene::PmxModelScene(const std::string& modelpath) : onlyDrawPmxModel(false)
+{
+
+	//const char *filename = "D:/Project/other/models/ganyu/甘雨.pmx";
+	//std::wstring prepath = L"D:/Project/other/models/ganyu/";
+	const char* filename = modelpath.c_str();
+	std::string pre = QString(modelpath.c_str()).section('/', 0, -2).toStdString();
+	std::wstring prepath = string2wstring(pre);
+	prepath.push_back('/');
 	pmx::PmxModel model;
 	std::ifstream stream = std::ifstream(filename, std::ios_base::binary);
 	model.Read(&stream);
@@ -550,14 +567,7 @@ OceanWaveScene::OceanWaveScene(): m_time(0.f), m_maxHeight(0.f), m_minHeight(0.f
 {
 	Vector2f wind{ 1.f, 1.f };
 	wind.normalize();
-	m_wave = new OceanWave(64, 64, 3e-7f, 1000.f, wind, 30.f);
-
-	Material& material = m_wave->wave.material;
-	material.ambient = { 1.f, 1.f, 1.f };
-	material.diffuse = { 1.f, 0.2f, 0.1f };
-	material.specular = { 0.5f, 0.5f, 0.5f };
-	material.shininess = 32.f;
-
+	m_wave = new OceanWave(64, 64, 3e-7f, 1000.f, wind, 20.f);
 
 	nearPlane = 0.1f;
 	farPlane = 1000.f;
@@ -582,7 +592,6 @@ OceanWaveScene::OceanWaveScene(): m_time(0.f), m_maxHeight(0.f), m_minHeight(0.f
 	m_VS = new GenericVertexShader;
 	m_PS = new OceanWavePixelShader;
 	m_PS2 = new GenericPixelShader;
-	m_PS2->color = { 0.f, 0.7f, 1.f };
 	m_PS->light = m_light;;
 	m_PS2->light = m_light;
 	RenderContext::vs = m_VS;
@@ -602,18 +611,18 @@ OceanWaveScene::~OceanWaveScene()
 
 void OceanWaveScene::render()
 {
-	m_time += 0.2;
+	m_time += 0.1;
 	generateWave();
 	RenderContext::clear();
 	camera.update();
 	
-	RenderContext::fillMode = FillMode::WIREFRAME;
 	RenderContext::eyePos = camera.pos;
 	m_VS->world = Transform::scale(0.1f, 0.1f, 0.1f);
 	m_VS->world3 = Matrix4To3(m_VS->world);
 	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
+	m_PS2->material = m_wave->wave.material;
 	drawMesh(m_wave->wave);
 }
 

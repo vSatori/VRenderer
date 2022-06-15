@@ -72,12 +72,14 @@ private:
 class PmxModelScene : public Scene
 {
 public:
-	PmxModelScene();
+	PmxModelScene(const std::string& modelpath);
 public:
 	virtual void render()override;
 public:
+	std::string modelName;
 	bool onlyDrawPmxModel;
 private:
+	
 	std::vector<Mesh> m_model;
 	Mesh m_bigBox;
 	Mesh m_lightBox;
