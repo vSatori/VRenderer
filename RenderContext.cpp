@@ -31,14 +31,8 @@ unsigned int RenderContext::currentPixelIndex = 0;
 
 void RenderContext::init()
 {
-	cullMode = CullMode::CULLBACKFACE;
-	fillMode = FillMode::SOLID;
-	//pixels = new Vector3f[width * height];
 	renderTarget = new unsigned int[width * height];
 	zbuffer = new float[width * height];
-	//pixelMask = new bool[width * height * 4];
-	vs = nullptr;
-	ps = nullptr;
 }
 
 void RenderContext::finalize()
@@ -293,18 +287,13 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 				}
 			}
 		
-			int red   = static_cast<int>(color.x * 255.f);
-			int green = static_cast<int>(color.y * 255.f);
-			int blue  = static_cast<int>(color.z * 255.f);
-			int colorValue = (red << 16) + (green << 8) + blue;
-			renderTarget[currentPixelIndex] = colorValue;
+			renderTarget[currentPixelIndex] = colorValue(color);
 			
 		}
 	}
 }
 void RenderContext::resolve()
 {
-	
 	for (int y = 0; y < height; ++y)
 	{
 		for (int x = 0; x < width; ++x)
@@ -322,10 +311,7 @@ void RenderContext::resolve()
 			coef /= 4.f;
 			Vector3f& color = pixels[index];
 			color *= coef;
-			int r = color.x * 255.f;
-			int g = color.y * 255.f;
-			int b = color.z * 255.f;
-			renderTarget[index] = (r << 16) + (g << 8) + b;
+			renderTarget[index] = colorValue(color);
 		}
 	}
 }

@@ -50,16 +50,12 @@ Vector3f SkyPixelShader::execute(const VertexOut& vout)
 Vector3f ReflectPixelShader::execute(const VertexOut& vout)
 {
 	unsigned int value = envCubeMap->sample(vout.posW);
-	float r = ((float)((value << 8)  >> 24)) / 255.f;
-	float g = ((float)((value << 16) >> 24)) / 255.f;
-	float b = ((float)((value << 24) >> 24)) / 255.f;
-	return Vector3f{ r, g, b };
+	return rgb2Vector(value);
 }
 
 Vector3f OceanWavePixelShader::execute(const VertexOut& vout)
 {
 	Vector3f shallowColor{ 0.f, 0.64f, 0.68f };
-	//return shallowColor;
 	Vector3f deepColor{ 0.02f, 0.05f, 0.1f };
 	float diff = vout.posW.y - minHeight;
 	float height = (diff) / (maxHeight - minHeight);

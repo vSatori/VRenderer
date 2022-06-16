@@ -40,14 +40,14 @@ void RayTracingScene::render()
 	sp2->center = Vector3f{ 0.f, -100.3f, -1.f };
 	sp2->radius = 100.f;
 	LAmbiention* sp2Ma = new LAmbiention;
-	sp2Ma->albedo = Vector3f{ 0.8, 0.8, 0.0 };
+	sp2Ma->albedo = Vector3f{ 0.8f, 0.8, 0.0f };
 	sp2->material = sp2Ma;
 
 	std::shared_ptr<HitSphere> sp3 = std::make_shared<HitSphere>();
 	sp3->center = Vector3f{ 0.8f, 0.f, -1.f };
 	sp3->radius = 0.3f;
 	Metal* sp3Ma = new Metal;
-	sp3Ma->albedo = Vector3f{ 0.8, 0.6, 0.2 };
+	sp3Ma->albedo = Vector3f{ 0.8f, 0.6f, 0.2f };
 	sp3Ma->fuzz = 0.3f;
 	sp3->material = sp3Ma;
 
@@ -55,7 +55,7 @@ void RayTracingScene::render()
 	sp4->center = Vector3f{ -0.8f, 0.f, -1.f };
 	sp4->radius = 0.3f;
 	Metal* sp4Ma = new Metal;
-	sp4Ma->albedo = Vector3f{ 0.8, 0.8, 0.8 };
+	sp4Ma->albedo = Vector3f{ 0.8f, 0.8f, 0.8f };
 	sp4Ma->fuzz = 1.f;
 	sp4->material = sp4Ma;
 
@@ -188,7 +188,4 @@ bool Metal::scatter(const Ray& ray, const HitRecord& record, Vector3f& attenuati
 	scatter = Ray{record.p, reflected + random_vec() * fuzz};
 	attenuation = albedo;
 	return scatter.direction.dot(record.n) > 0;
-
-
-	return false;
 }

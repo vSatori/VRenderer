@@ -5,21 +5,17 @@
 #include "Scene.h"
 #include "RenderView.h"
 #include <QtCore/qdebug.h>
+#include "RenderContext.h"
 
 bool exitApp = false;
 int main(int argc, char *argv[])
 {
-	if (argc < 3)
-	{
-		return 0;
-	}
 	QApplication a(argc, argv);
 	RenderView view;
-	PmxModelScene scene(argv[1]);
-	bool useLight = (bool)(int(argv[2][0] - 48));
-	qDebug() << int(argv[2][0]);
-	scene.onlyDrawPmxModel = useLight;
+	PmxModelScene scene("D:/Project/other/models/hutao/ÏÄ×°ºúÌÒ/ºúÌÒ.pmx");
+	scene.onlyDrawPmxModel = false;
 	view.setScene(&scene);
+	RenderContext::vs;
 	QTimer timer;
 	timer.setInterval(500);
 	timer.setSingleShot(true);

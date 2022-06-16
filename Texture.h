@@ -73,6 +73,6 @@ class DynamicCubeMap : public CubeMap
 public:
 	DynamicCubeMap();
 public:
-	void setRowData(Direction dir, unsigned int* data, unsigned int width, unsigned int height);
+	void setRowData(Direction dir, unsigned int* data, int width, int height);
 	unsigned int sample(const Vector3f& dir);
 };

@@ -2,40 +2,28 @@
 #include <string.h>
 #include <math.h>
 #define PI 3.1415926535f
+
 inline float radian(float angle)
 {
 	return PI / 180.f * angle;
 }
 
-template <typename T>
-inline T clamp(T min, T max, T value)
-{
-	if (value < min)
-	{
-		return min;
-	}
-	if (value > max)
-	{
-		return max;
-	}
-	return value;
-}
-
-struct Vector2f
+template<typename T>
+struct Vector2
 {
 public:
-	Vector2f(){}
-	Vector2f(float x, float y) :x(x), y(y)
+	Vector2(){}
+	Vector2(T x, T y) :x(x), y(y)
 	{
 
 	}
-	inline float length() const
+	inline T length() const
 	{
 		return sqrtf(x * x + y * y);
 	}
 	inline void normalize()
 	{
-		float len = length();
+		T len = length();
 		if (len <= 0.f)
 		{
 			return;
@@ -43,81 +31,77 @@ public:
 		x /= len;
 		y /= len;
 	}
-	inline float dot(const Vector2f& vec)const
+	inline T dot(const Vector2<T>& vec)const
 	{
 		return x * vec.x + y * vec.y;
 	}
 
-	inline float corss(const Vector2f& vec)const
+	inline T corss(const Vector2<T>& vec)const
 	{
 		return x * vec.y - y * vec.x;
 	}
-	inline Vector2f operator+(const Vector2f& vec)const
+	inline Vector2<T> operator+(const Vector2<T>& vec)const
 	{
-		Vector2f res;
+		Vector2<T> res;
 		res.x = x + vec.x;
 		res.y = y + vec.y;
 		return res;
 	}
-	inline Vector2f operator-(const Vector2f& vec)const
+	inline Vector2<T> operator-(const Vector2<T>& vec)const
 	{
-		Vector2f res;
+		Vector2<T> res;
 		res.x = x - vec.x;
 		res.y = y - vec.y;
 		return res;
 	}
-	inline Vector2f operator*(float t)const
+	inline Vector2<T> operator*(T t)const
 	{
-		Vector2f res;
+		Vector2<T> res;
 		res.x = x * t;
 		res.y = y * t;
 		return res;
 	}
-	inline Vector2f operator+=(const Vector2f& vec)
+	inline Vector2<T> operator+=(const Vector2<T>& vec)
 	{
 		x += vec.x;
 		y += vec.y;
 		return *this;
 	}
-	inline Vector2f operator-=(const Vector2f& vec)
+	inline Vector2<T> operator-=(const Vector2<T>& vec)
 	{
 		x -= vec.x;
 		y -= vec.y;
 		return *this;
 	}
-	inline Vector2f operator*=(float t)
+	inline Vector2<T> operator*=(T t)
 	{
 		x *= t;
 		y *= t;
 		return *this;
 	}
-	float x = 0.f;
-	float y = 0.f;
+public:
+	T x;
+	T y;
 };
 
-struct Vector2i
-{
-	int x; 
-	int y;
-};
-
-struct Vector3i
-{
-	int x;
-	int y;
-	int z;
-};
+using Vector2i = Vector2<int>;
+using Vector2f = Vector2<float>;
 
 
-struct Vector3f
+template<typename T>
+struct Vector3
 {
-	inline float length()const
+public:
+	Vector3() {}
+	Vector3(T x, T y, T z) : x(x), y(y), z(z) {}
+public:
+	inline T length()const
 	{
 		return sqrtf(x * x + y * y + z * z);
 	}
 	inline void normalize()
 	{
-		float len = length();
+		T len = length();
 		if (len <= 0.f)
 		{
 			return;
@@ -126,116 +110,123 @@ struct Vector3f
 		y /= len;
 		z /= len;
 	}
-	inline Vector3f operator+(const Vector3f& vec)const
+	inline Vector3<T> operator+(const Vector3<T>& vec)const
 	{
-		Vector3f res;
+		Vector3<T> res;
 		res.x = x + vec.x;
 		res.y = y + vec.y;
 		res.z = z + vec.z;
 		return res;
 	}
-	inline Vector3f operator-(const Vector3f& vec)const
+	inline Vector3<T> operator-(const Vector3<T>& vec)const
 	{
-		Vector3f res;
+		Vector3<T> res;
 		res.x = x - vec.x;
 		res.y = y - vec.y;
 		res.z = z - vec.z;
 		return res;
 	}
 
-	inline Vector3f operator*(float w)const
+	inline Vector3<T> operator*(T w)const
 	{
-		Vector3f res;
+		Vector3<T> res;
 		res.x = x * w;
 		res.y = y * w;
 		res.z = z * w;
 		return res;
 	}
 
-	inline Vector3f operator*(const Vector3f& vec)const
+	inline Vector3<T> operator*(const Vector3<T>& vec)const
 	{
-		Vector3f res;
+		Vector3<T> res;
 		res.x = x * vec.x;
 		res.y = y * vec.y;
 		res.z = z * vec.z;
 		return res;
 	}
 
-	inline Vector3f operator/(float w)const
+	inline Vector3<T> operator/(T w)const
 	{
-		Vector3f res;
+		Vector3<T> res;
 		res.x = x / w;
 		res.y = y / w;
 		res.z = z / w;
 		return res;
 	}
-	inline Vector3f operator+=(const Vector3f& vec)
+	inline Vector3<T> operator+=(const Vector3<T>& vec)
 	{
 		x += vec.x;
 		y += vec.y;
 		z += vec.z;
 		return *this;
 	}
-	inline Vector3f operator-=(const Vector3f& vec)
+	inline Vector3<T> operator-=(const Vector3<T>& vec)
 	{
 		x -= vec.x;
 		y -= vec.y;
 		z -= vec.z;
 		return *this;
 	}
-	inline Vector3f operator*=(const Vector3f& vec)
+	inline Vector3<T> operator*=(const Vector3<T>& vec)
 	{
 		x *= vec.x;
 		y *= vec.y;
 		z *= vec.z;
 		return *this;
 	}
-	inline Vector3f operator*=(float w)
+	inline Vector3<T> operator*=(T w)
 	{
 		x *= w;
 		y *= w;
 		z *= w;
 		return *this;
 	}
-	inline Vector3f operator/=(float w)
+	inline Vector3<T> operator/=(T w)
 	{
 		x /= w;
 		y /= w;
 		z /= w;
 		return *this;
 	}
-	float dot(const Vector3f& vec)const
+	T dot(const Vector3<T>& vec)const
 	{
 		return x * vec.x + y * vec.y + z * vec.z;
 	}
-	inline Vector3f cross(const Vector3f& vec)const
+	inline Vector3<T> cross(const Vector3<T>& vec)const
 	{
-		Vector3f res;
+		Vector3<T> res;
 		res.x = y * vec.z - z * vec.y;
 		res.y = z * vec.x - x * vec.z;
 		res.z = x * vec.y - y * vec.x;
 		return res;
 	}
-	inline Vector3f reflect(const Vector3f& normal)const
+	inline Vector3<T> reflect(const Vector3<T>& normal)const
 	{
-		Vector3f res;
+		Vector3<T> res;
 		//R = I - 2.0 * dot(N, I) * N;
-		float d = dot(normal);
+		T d = dot(normal);
 		res.x = x - 2 * d * normal.x;
 		res.y = y - 2 * d * normal.y;
 		res.z = z - 2 * d * normal.z;
 		return res;
 	}
 public:
-	float x = 0.f;
-	float y = 0.f;
-	float z = 0.f;
+	T x;
+	T y;
+	T z;
 };
 
+using Vector3i = Vector3<int>;
+using Vector3f = Vector3<float>;
 
-struct Vector4f
+template<typename T>
+struct Vector4
 {
-	inline Vector4f operator=(const Vector3f& vec3)
+public:
+	Vector4() {}
+	Vector4(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
+public:
+	inline Vector4<T> operator=(const Vector3<T>& vec3)
 	{
 		x = vec3.x;
 		y = vec3.y;
@@ -243,9 +234,9 @@ struct Vector4f
 		w = 1.f;
 		return *this;
 	}
-	inline Vector4f operator+(const Vector4f& vec4)const
+	inline Vector4<T> operator+(const Vector4<T>& vec4)const
 	{
-		Vector4f res;
+		Vector4<T> res;
 		res.x = x + vec4.x;
 		res.y = y + vec4.y;
 		res.z = z + vec4.z;
@@ -254,9 +245,9 @@ struct Vector4f
 		return res;
 	}
 
-	inline Vector4f operator-(const Vector4f& vec4)const
+	inline Vector4<T> operator-(const Vector4<T>& vec4)const
 	{
-		Vector4f res;
+		Vector4<T> res;
 		res.x = x - vec4.x;
 		res.y = y - vec4.y;
 		res.z = z - vec4.z;
@@ -264,9 +255,9 @@ struct Vector4f
 
 		return res;
 	}
-	inline Vector4f operator+(float v)const
+	inline Vector4<T> operator+(T v)const
 	{
-		Vector4f res;
+		Vector4<T> res;
 		res.x = x + v;
 		res.y = y + v;
 		res.z = z + v;
@@ -274,9 +265,9 @@ struct Vector4f
 
 		return res;
 	}
-	inline Vector4f operator*(float v)const
+	inline Vector4<T> operator*(T v)const
 	{
-		Vector4f res;
+		Vector4<T> res;
 		res.x = x * v;
 		res.y = y * v;
 		res.z = z * v;
@@ -284,9 +275,9 @@ struct Vector4f
 
 		return res;
 	}
-	inline Vector4f operator/(float v)const
+	inline Vector4<T> operator/(T v)const
 	{
-		Vector4f res;
+		Vector4<T> res;
 		res.x = x / v;
 		res.y = y / v;
 		res.z = z / v;
@@ -294,7 +285,7 @@ struct Vector4f
 
 		return res;
 	}
-	inline Vector4f operator+=(const Vector4f& vec)
+	inline Vector4<T> operator+=(const Vector4<T>& vec)
 	{
 		x += vec.x;
 		y += vec.y;
@@ -302,7 +293,7 @@ struct Vector4f
 		w += vec.w;
 		return *this;
 	}
-	inline Vector4f operator-=(const Vector4f& vec)
+	inline Vector4<T> operator-=(const Vector4<T>& vec)
 	{
 		x -= vec.x;
 		y -= vec.y;
@@ -310,7 +301,7 @@ struct Vector4f
 		w -= vec.w;
 		return *this;
 	}
-	inline Vector4f operator*=(float t)
+	inline Vector4<T> operator*=(T t)
 	{
 		x *= t;
 		y *= t;
@@ -319,7 +310,7 @@ struct Vector4f
 		return *this;
 	}
 
-	inline Vector4f operator/=(float t)
+	inline Vector4<T> operator/=(T t)
 	{
 		x /= t;
 		y /= t;
@@ -327,16 +318,19 @@ struct Vector4f
 		w /= t;
 		return *this;
 	}
-	inline float dot(const Vector4f& vec4) const
+	inline T dot(const Vector4<T>& vec4) const
 	{
 		return x * vec4.x + y * vec4.y + z * vec4.z + w * vec4.w;
 	}
-	float x = 0.f;
-	float y = 0.f;
-	float z = 0.f;
-	float w = 1.f;
+public:
+	T x;
+	T y;
+	T z;
+	T w;
 };
 
+using Vector4i = Vector4<int>;
+using Vector4f = Vector4<float>;
 
 struct Matrix3
 {
@@ -529,6 +523,22 @@ public:
 };
 
 
+
+template <typename T>
+inline T clamp(T min, T max, T value)
+{
+	if (value < min)
+	{
+		return min;
+	}
+	if (value > max)
+	{
+		return max;
+	}
+	return value;
+}
+
+
 inline Vector4f vector3To4(const Vector3f& vec3)
 {
 	return Vector4f{vec3.x, vec3.y, vec3.z, 1.f};
@@ -548,8 +558,8 @@ inline Matrix3 Matrix4To3(const Matrix4& mat4)
 	}
 	return mat3;
 }
-
-inline int findMax(int v1, int v2, int v3)
+template<typename T>
+inline T findMax(T v1, T v2, T v3)
 {
 	if (v1 >= v2)
 	{
@@ -566,7 +576,8 @@ inline int findMax(int v1, int v2, int v3)
 	return v3;
 }
 
-inline int findMin(int v1, int v2, int v3)
+template<typename T>
+inline T findMin(T v1, T v2, T v3)
 {
 	if (v1 <= v2)
 	{
@@ -600,5 +611,14 @@ inline Vector3f rgb2Vector(unsigned int value)
 	color.y = ((float)((value << 16) >> 24)) / 255.f;
 	color.z = ((float)((value << 8)  >> 24)) / 255.f;
 	return color;
+}
+
+inline unsigned int colorValue(const Vector3f& color)
+{
+	int red   = static_cast<int>(color.x * 255.f);
+	int green = static_cast<int>(color.y * 255.f);
+	int blue  = static_cast<int>(color.z * 255.f);
+	return (red << 16) + (green << 8) + blue;
+
 }
 

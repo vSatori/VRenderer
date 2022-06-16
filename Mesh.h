@@ -5,8 +5,8 @@
 #include <memory>
 struct Vertex
 {
-	Vector3f pos{ 0.f, 0.f };
-	Vector3f normal{ 0.f, 0.f };
+	Vector3f pos{0.f, 0.f, 0.f };
+	Vector3f normal{0.f, 0.f, 0.f };
 	Vector2f tex{ 0.f, 0.f };
 };
 

@@ -209,7 +209,7 @@ DynamicCubeMap::DynamicCubeMap()
 	
 }
 
-void DynamicCubeMap::setRowData(Direction dir, unsigned int * data, unsigned int width, unsigned int height)
+void DynamicCubeMap::setRowData(Direction dir, unsigned int * data, int width, int height)
 {
 	m_textures[static_cast<int>(dir)]->setRowData(data, width, height);
 }

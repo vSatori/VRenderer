@@ -18,7 +18,7 @@ static void perspectiveDivide(Vector4f& posH)
 
 
 
-Scene::Scene() : nearPlane(0.1f), farPlane(10.f), fov(90.f), m_frameFactor(0.f)
+Scene::Scene() : nearPlane(0.1f), farPlane(10.f), fov(90.f)
 {
 }
 
@@ -67,7 +67,6 @@ void Scene::drawMesh(const Mesh& mesh, VertexOut* vertexBuff)
 			for (int j = 0; j < size; ++j)
 			{
 				RenderContext::draw(vos[0], vos[j + 1], vos[j + 2]);
-				
 			}
 		}
 		else
@@ -81,14 +80,16 @@ void Scene::drawMesh(const Mesh& mesh, VertexOut* vertexBuff)
 }
 
 
-DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
-{
-	m_skyVS     = new SkyVertexShader;
-	m_skyPS     = new SkyPixelShader;
-	m_sphereVS  = new GenericVertexShader;
-	m_spherePS  = new GenericPixelShader;
-	m_reflectPS = new ReflectPixelShader;
+DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() : 
+	m_angle(0.f),
+	m_envCubeMap(nullptr),
+	m_reflectPS (nullptr),
+	m_commonVS  (nullptr),
+	m_spherePS  (nullptr),
+	m_skyVS     (nullptr),
+	m_skyPS     (nullptr)
 
+{
 	MeshFactory::createCube(m_sky, 1.f, 1.f, 1.f);
 	std::vector<std::string> files;
 	files.push_back("D:/Project/Renderer/skybox/skybox/left.jpg");
@@ -98,8 +99,6 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 	files.push_back("D:/Project/Renderer/skybox/skybox/back.jpg");
 	files.push_back("D:/Project/Renderer/skybox/skybox/front.jpg");
 	m_sky.cubeMap = std::make_unique<StaticCubeMap>(files);
-	m_skyPS->cubeMap = m_sky.cubeMap.get();
-
 
 	std::vector<Vector3f> colors;
 	colors.resize(4);
@@ -116,13 +115,16 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 		m_movingSpheres[i].material.diffuse = colors[i];
 	}
 	
+	m_envCubeMap = new DynamicCubeMap;
+	
+	m_reflectPS = new ReflectPixelShader;
+	m_commonVS  = new GenericVertexShader;
+	m_spherePS  = new GenericPixelShader;
+	m_skyVS     = new SkyVertexShader;
+	m_skyPS     = new SkyPixelShader;
 
-	m_envCubeMap = std::make_unique<DynamicCubeMap>();
-	m_reflectPS->envCubeMap = m_envCubeMap.get();
-
-	nearPlane = 1.f;
-	farPlane = 1000.f;
-	fov = 90.f;
+	m_reflectPS->envCubeMap = m_envCubeMap;
+	m_skyPS->cubeMap = m_sky.cubeMap.get();
 
 	camera.useSphereMode = true;
 	camera.radius = 10.f;
@@ -131,23 +133,26 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene()
 	camera.pos = { 0.f, 0.f, -5.f };
 	camera.target = { 0.f, 0.f, 0.f };
 
-	
+	nearPlane = 1.f;
+	farPlane = 1000.f;
+	fov = 90.f;
 }
 DynamicEnviromentMappingScene::~DynamicEnviromentMappingScene()
 {
+	delete m_reflectPS;
+	delete m_commonVS;
+	delete m_spherePS;
 	delete m_skyPS;
 	delete m_skyVS;
-	delete m_sphereVS;
-	delete m_spherePS;
-	delete m_reflectPS;
 }
+	
 
 void DynamicEnviromentMappingScene::render()
 {
-	m_frameFactor += 2;
-	if (m_frameFactor >= 360.f)
+	m_angle += 2;
+	if (m_angle >= 360.f)
 	{
-		m_frameFactor = 0.f;
+		m_angle = 0.f;
 	}
 
 	unsigned int* frameCache = RenderContext::renderTarget;
@@ -170,7 +175,7 @@ void DynamicEnviromentMappingScene::render()
 		unsigned int* buff = new unsigned int[RenderContext::width * RenderContext::height];
 		RenderContext::renderTarget = buff;
 		camera.target = targets[i];
-		//render(false);
+		render(false);
 		m_envCubeMap->setRowData(static_cast<DynamicCubeMap::Direction>(i), buff, RenderContext::width, RenderContext::height);
 		delete[] buff;
 	}
@@ -191,14 +196,14 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	Matrix4 world;
 	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
 
-	m_sphereVS->view = camera.matrix;
-	m_sphereVS->projection = projection;
-	m_sphereVS->vp = projection * camera.matrix;
+	m_commonVS->view = camera.matrix;
+	m_commonVS->projection = projection;
+	m_commonVS->vp = projection * camera.matrix;
 
-	RenderContext::vs = m_sphereVS;
+	RenderContext::vs = m_commonVS;
 	if (drawRelect)
 	{
-		m_sphereVS->world.init();
+		m_commonVS->world.init();
 		RenderContext::ps = m_reflectPS;
 		drawMesh(m_reflectSphere);
 	}
@@ -206,9 +211,9 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	for (int index = 0; index < m_movingSpheres.size(); ++index)
 	{
 		const auto& movingSphere = m_movingSpheres[index];
-		float x = cosf(radian(m_frameFactor + index * 90.f)) * 6.f;
-		float z = sinf(radian(m_frameFactor + index * 90.f)) * 6.f;
-		m_sphereVS->world = Transform::translate(x, 0.f, z);
+		float x = cosf(radian(m_angle + index * 90.f)) * 6.f;
+		float z = sinf(radian(m_angle + index * 90.f)) * 6.f;
+		m_commonVS->world = Transform::translate(x, 0.f, z);
 		m_spherePS->material = movingSphere.material;
 		drawMesh(movingSphere);		
 	}
@@ -222,50 +227,59 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	RenderContext::clockwise = false;
 }
 
-ShadowMappingScene::ShadowMappingScene()
+ShadowMappingScene::ShadowMappingScene() : 
+	m_angle(0.f),
+	m_commonVS    (nullptr),
+	m_commonPS    (nullptr),
+	m_shadowVS    (nullptr),
+	m_light       (nullptr),
+	m_depthTexture(nullptr)
 {
-	m_sphereVS = new GenericVertexShader;
-	m_spherePS = new GenericPixelShader;
-	m_shadowVS = new ShadowMapVertexShader;
+	
 	MeshFactory::createSphere(m_sphere, 1.f, 30, 30);
 	MeshFactory::createCube(m_ground, 5.f, 1.f, 5.f);
 
-	m_sphere.material.ambient = { 1.f, 0.f, 0.f };
-	m_sphere.material.diffuse = { 1.f, 0.f, 0.f };
-	m_sphere.material.specular = { 0.5f, 0.5f, 0.5f };
-	m_sphere.material.shininess = 32;
+	m_sphere.material.ambient   =  { 1.f, 0.f, 0.f };
+	m_sphere.material.diffuse   = { 1.f, 0.f, 0.f };
+	m_sphere.material.specular  = { 0.5f, 0.5f, 0.5f };
+	m_sphere.material.shininess = 32.f;
 
-	m_ground.material.ambient = { 1.f, 1.f, 1.f };
-	m_ground.material.diffuse = { 1.f, 1.f, 1.f };
-	m_ground.material.specular = { 0.5f, 0.5f, 0.5f };
-	m_ground.material.shininess = 32;
+	m_ground.material.ambient   = { 1.f, 1.f, 1.f };
+	m_ground.material.diffuse   = { 1.f, 1.f, 1.f };
+	m_ground.material.specular  = { 0.5f, 0.5f, 0.5f };
+	m_ground.material.shininess = 32.f;
 
 	DirectionalLight* light = new DirectionalLight;
-	light->ambient = { 0.2f, 0.2f, 0.2f };
-	light->diffuse = { 0.5f, 0.5f, 0.5f };
-	light->specular = { 1.f, 1.f, 1.f };
+	light->ambient   = { 0.2f, 0.2f, 0.2f };
+	light->diffuse   = { 0.5f, 0.5f, 0.5f };
+	light->specular  = { 1.f, 1.f, 1.f };
 	light->direction = { 0.f, -1.f, 1.f };
-	light->pos = { 0.f, 100.f, -100.f };
+	light->pos       = { 0.f, 100.f, -100.f };
 	m_light = light;
-	m_spherePS->light = m_light;
-
+	
 	m_depthTexture = new DepthTexture;
-	m_spherePS->depthTexture = m_depthTexture;
+	
+	m_commonVS = new GenericVertexShader;
+	m_commonPS = new GenericPixelShader;
+	m_shadowVS = new ShadowMapVertexShader;
 
-	nearPlane = 1.f;
-	farPlane = 1000.f;
-	fov = 90.f;
+	m_commonPS->light = m_light;
+	m_commonPS->depthTexture = m_depthTexture;
 
 	camera.useSphereMode = true;
 	camera.radius = 10.f;
 	camera.pos = { 0.f, 0.f, -5.f };
 	camera.target = { 0.f, 0.f, 0.f };
+
+	nearPlane = 1.f;
+	farPlane = 1000.f;
+	fov = 90.f;
 }
 
 ShadowMappingScene::~ShadowMappingScene()
 {
-	delete m_sphereVS;
-	delete m_spherePS;
+	delete m_commonVS;
+	delete m_commonPS;
 	delete m_shadowVS;
 	delete m_light;
 	delete m_depthTexture;
@@ -273,15 +287,15 @@ ShadowMappingScene::~ShadowMappingScene()
 
 void ShadowMappingScene::render()
 {
-	m_frameFactor += 1;
-	if (m_frameFactor > 360)
+	m_angle += 1;
+	if (m_angle > 360)
 	{
-		m_frameFactor = 0;
+		m_angle = 0;
 	}
 
-	float x = cosf(radian(m_frameFactor)) * 10.f;
+	float x = cosf(radian(m_angle)) * 10.f;
 	float y = 10.f;
-	float z = sinf(radian(m_frameFactor)) * 10.f;
+	float z = sinf(radian(m_angle)) * 10.f;
 	m_light->pos = { x, y, z };
 	m_light->direction = { -x, -y, -z };
 	m_light->direction.normalize();
@@ -334,29 +348,29 @@ void ShadowMappingScene::renderScene()
 	RenderContext::cullMode = CullMode::CULLBACKFACE;
 	RenderContext::fillMode = FillMode::SOLID;
 
-	RenderContext::vs = m_sphereVS;
-	RenderContext::ps = m_spherePS;
+	RenderContext::vs = m_commonVS;
+	RenderContext::ps = m_commonPS;
 
 	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
-	m_sphereVS->view = camera.matrix;
-	m_sphereVS->projection = projection;
-	m_sphereVS->vp = projection * camera.matrix;
+	m_commonVS->view = camera.matrix;
+	m_commonVS->projection = projection;
+	m_commonVS->vp = projection * camera.matrix;
 	
 	Camera tempCamera = camera;
 	tempCamera.useSphereMode = false;
 	tempCamera.target = { 0.f, 0.f, 0.f };
 	tempCamera.pos = m_light->pos;
 	tempCamera.update();
-	m_sphereVS->shadow = shadowProjection(tempCamera.matrix) * tempCamera.matrix;
+	m_commonVS->shadow = shadowProjection(tempCamera.matrix) * tempCamera.matrix;
 	
-	m_sphereVS->world = Transform::translate(0.f, -1.7f, 0.f);
-	m_sphereVS->world3 = Matrix4To3(m_sphereVS->world);
-	m_spherePS->material = m_ground.material;
+	m_commonVS->world = Transform::translate(0.f, -1.7f, 0.f);
+	m_commonVS->world3 = Matrix4To3(m_commonVS->world);
+	m_commonPS->material = m_ground.material;
 	drawMesh(m_ground);
 
-	m_sphereVS->world.init();
-	m_sphereVS->world3 = Matrix4To3(m_sphereVS->world);
-	m_spherePS->material = m_sphere.material;
+	m_commonVS->world.init();
+	m_commonVS->world3 = Matrix4To3(m_commonVS->world);
+	m_commonPS->material = m_sphere.material;
 	drawMesh(m_sphere);
 }
 
@@ -384,24 +398,24 @@ static std::string wstring2string(std::wstring wstr)
 
 std::wstring string2wstring(std::string sToMatch)
 {
-
-	int iWLen = MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), 0, 0); // 计算转换后宽字符串的长度。（不包含字符串结束符）
+	int iWLen = MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), 0, 0);
 	wchar_t* lpwsz = new wchar_t[iWLen + 1];
-	MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), lpwsz, iWLen); // 正式转换。
+	MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), lpwsz, iWLen);
 	lpwsz[iWLen] = L'\0';
 	std::wstring wsToMatch(lpwsz);
 	delete[]lpwsz;
 	return wsToMatch;
 }
 
-PmxModelScene::PmxModelScene(const std::string& modelpath) : onlyDrawPmxModel(false)
+PmxModelScene::PmxModelScene(const std::string& modelpath) : 
+	m_angle(0.f),
+	m_VS   (nullptr),
+	m_PS   (nullptr),
+	m_light(nullptr)
 {
-
-	//const char *filename = "D:/Project/other/models/ganyu/甘雨.pmx";
-	//std::wstring prepath = L"D:/Project/other/models/ganyu/";
 	const char* filename = modelpath.c_str();
-	std::string pre = QString(modelpath.c_str()).section('/', 0, -2).toStdString();
-	std::wstring prepath = string2wstring(pre);
+	int count = modelpath.find_last_of('/');
+	std::wstring prepath = string2wstring(modelpath.substr(0, count));
 	prepath.push_back('/');
 	pmx::PmxModel model;
 	std::ifstream stream = std::ifstream(filename, std::ios_base::binary);
@@ -458,7 +472,7 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) : onlyDrawPmxModel(fa
 	m_bigBox.material.ambient = { 1.f, 1.f, 0.f };
 	m_bigBox.material.diffuse = { 1.f, 1.f, 0.f };
 	m_bigBox.material.specular = { 0.5f, 0.5f, 0.5f };
-	m_bigBox.material.shininess = 32;
+	m_bigBox.material.shininess = 32.f;
 
 	MeshFactory::createCube(m_lightBox, 0.2f, 0.2f, 0.2f);
 
@@ -472,8 +486,6 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) : onlyDrawPmxModel(fa
 	camera.target = { 0.f, 10.f, 0.f };
 	fov = 75.f;
 
-	
-
 	PointLight* lit = new PointLight;
 	lit->ambient = { 0.2f, 0.2f, 0.2f };
 	lit->constant = 0.1f;
@@ -484,16 +496,26 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) : onlyDrawPmxModel(fa
 	m_VS = new GenericVertexShader;
 	m_PS = new GenericPixelShader;
 	m_PS->color = { 0.f, 0.7f, 1.f };
+
+	onlyDrawPmxModel = false;
+	m_angle = 0.f;
+}
+
+PmxModelScene::~PmxModelScene()
+{
+	delete m_VS;
+	delete m_PS;
+	delete m_light;
 }
 
 void PmxModelScene::render()
 {
-	m_frameFactor += 1;
-	if (m_frameFactor > 360)
+	m_angle += 1;
+	if (m_angle > 360)
 	{
-		m_frameFactor = 0;
+		m_angle = 0;
 	}
-	if (m_frameFactor > 180)
+	if (m_angle > 180)
 	{
 		m_light->diffuse = { 1.0f, 0.0f, 0.0f };
 		m_light->specular = { 1.0f, 1.f, 1.0f };
@@ -507,9 +529,9 @@ void PmxModelScene::render()
 		m_lightBox.material.diffuse = { 0.f, 0.9f, 0.2f };
 	}
 
-	float x = cosf(radian(m_frameFactor)) * 8.f;
+	float x = cosf(radian(m_angle)) * 8.f;
 	float y = 16.f;
-	float z = sinf(radian(m_frameFactor)) * 8.f;
+	float z = sinf(radian(m_angle)) * 8.f;
 	m_light->pos = { x, y, z };
 
 	RenderContext::clear();
@@ -563,25 +585,20 @@ void PmxModelScene::render()
 
 
 
-OceanWaveScene::OceanWaveScene(): m_time(0.f), m_maxHeight(0.f), m_minHeight(0.f)
+OceanWaveScene::OceanWaveScene() : 
+	m_wave(nullptr),
+	m_time      (0.f),
+	m_maxHeight(0.f),
+	m_minHeight(0.f),
+	m_VS       (nullptr),
+	m_PS       (nullptr),
+	m_light    (nullptr)
 {
 	Vector2f wind{ 1.f, 1.f };
 	wind.normalize();
 	m_wave = new OceanWave(64, 64, 3e-7f, 1000.f, wind, 20.f);
 
-	nearPlane = 0.1f;
-	farPlane = 1000.f;
-
-	camera.useSphereMode = true;
-	camera.pitch = 45.f;
-	camera.yaw = -90.f;
-	camera.radius = 100;
-	camera.target = { 0.f, 0.f, 0.f };
-	fov = 60.f;
-
-
 	m_light = new DirectionalLight;
-	m_light->function = makeComputeDirectLightFunction(m_light);
 	m_light->ambient = { 0.1f, 0.1f, 0.1f };
 	m_light->diffuse = { 1.f, 1.f, 1.f };
 	m_light->specular = { 1.f, 0.9f, 0.7f };
@@ -591,14 +608,18 @@ OceanWaveScene::OceanWaveScene(): m_time(0.f), m_maxHeight(0.f), m_minHeight(0.f
 
 	m_VS = new GenericVertexShader;
 	m_PS = new OceanWavePixelShader;
-	m_PS2 = new GenericPixelShader;
-	m_PS->light = m_light;;
-	m_PS2->light = m_light;
-	RenderContext::vs = m_VS;
-	RenderContext::ps = m_PS;
 
-	RenderContext::cullMode = CullMode::CULLBACKFACE;
-	RenderContext::fillMode = FillMode::SOLID;
+	m_PS->light = m_light;;
+
+	camera.useSphereMode = true;
+	camera.pitch = 45.f;
+	camera.yaw = -90.f;
+	camera.radius = 100;
+	camera.target = { 0.f, 0.f, 0.f };
+
+	nearPlane = 0.1f;
+	farPlane = 1000.f;
+	fov = 60.f;
 }
 
 OceanWaveScene::~OceanWaveScene()
@@ -606,7 +627,6 @@ OceanWaveScene::~OceanWaveScene()
 	delete m_wave;
 	delete m_VS;
 	delete m_PS;
-	delete m_PS2;
 }
 
 void OceanWaveScene::render()
@@ -615,14 +635,17 @@ void OceanWaveScene::render()
 	generateWave();
 	RenderContext::clear();
 	camera.update();
-	
+
+	RenderContext::vs = m_VS;
+	RenderContext::ps = m_PS;
 	RenderContext::eyePos = camera.pos;
+
 	m_VS->world = Transform::scale(0.1f, 0.1f, 0.1f);
 	m_VS->world3 = Matrix4To3(m_VS->world);
 	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
-	m_PS2->material = m_wave->wave.material;
+
 	drawMesh(m_wave->wave);
 }
 

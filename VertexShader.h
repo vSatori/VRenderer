@@ -15,8 +15,6 @@ public:
 	Matrix3 world3;
 };
 
-
-
 class GenericVertexShader : public VertexShader
 {
 public:

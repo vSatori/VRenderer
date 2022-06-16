@@ -21,8 +21,6 @@ public:
 	float nearPlane;
 	float farPlane;
 	float fov;
-protected:
-	float m_frameFactor;
 };
 
 class DynamicEnviromentMappingScene : public Scene
@@ -35,12 +33,15 @@ public:
 private:
 	void render(bool drawRelect);
 private:
+	float m_angle;
+
 	SkyBox m_sky;
 	Mesh m_reflectSphere;
 	std::vector<Mesh> m_movingSpheres;
-	std::unique_ptr<DynamicCubeMap> m_envCubeMap;
+	DynamicCubeMap* m_envCubeMap;
+	
 	ReflectPixelShader*  m_reflectPS;
-	GenericVertexShader* m_sphereVS;
+	GenericVertexShader* m_commonVS;
 	GenericPixelShader*  m_spherePS;
 	SkyVertexShader*     m_skyVS;
 	SkyPixelShader*      m_skyPS;
@@ -58,11 +59,15 @@ private:
 	void renderScene();
 	Matrix4 shadowProjection(const Matrix4& matView);
 private:
+	float m_angle;
+
 	Mesh m_sphere;
 	Mesh m_ground;
-	GenericVertexShader*   m_sphereVS;
-	GenericPixelShader*    m_spherePS;
+	
+	GenericVertexShader*   m_commonVS;
+	GenericPixelShader*    m_commonPS;
 	ShadowMapVertexShader* m_shadowVS;
+
 	DirectionalLight*      m_light;
 	DepthTexture*          m_depthTexture;
 	Matrix4                m_lightWorld;
@@ -73,18 +78,21 @@ class PmxModelScene : public Scene
 {
 public:
 	PmxModelScene(const std::string& modelpath);
+	~PmxModelScene();
 public:
 	virtual void render()override;
 public:
-	std::string modelName;
 	bool onlyDrawPmxModel;
 private:
-	
+	float m_angle;
+
 	std::vector<Mesh> m_model;
 	Mesh m_bigBox;
 	Mesh m_lightBox;
-	GenericPixelShader* m_PS;
-	GenericVertexShader* m_VS; 
+
+	GenericVertexShader* m_VS;
+	GenericPixelShader*  m_PS;
+	
 	PointLight* m_light;
 };
 
@@ -101,11 +109,13 @@ private:
 	void generateWave();
 private:
 	OceanWave* m_wave;
+
 	float m_time;
 	float m_maxHeight;
 	float m_minHeight;
-	GenericVertexShader* m_VS;
+
+	GenericVertexShader*  m_VS;
 	OceanWavePixelShader* m_PS;
-	GenericPixelShader* m_PS2;
+
 	DirectionalLight* m_light;
 };

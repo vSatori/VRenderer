@@ -7,13 +7,13 @@
 
 using PSFunction = std::function<Vector3f(const VertexOut&)>;
 
-struct PixelShader
+class PixelShader
 {
 public:
 	virtual Vector3f execute(const VertexOut& vout) = 0;
 };
 
-struct GenericPixelShader : public PixelShader
+class GenericPixelShader : public PixelShader
 {
 public:
 	virtual Vector3f execute(const VertexOut& vout);
@@ -26,7 +26,7 @@ public:
 	DepthTexture* depthTexture = nullptr;
 };
 
-struct SkyPixelShader : public PixelShader
+class SkyPixelShader : public PixelShader
 {
 public:
 	virtual Vector3f execute(const VertexOut& vout);
@@ -34,7 +34,7 @@ public:
 	StaticCubeMap* cubeMap = nullptr;
 };
 
-struct ReflectPixelShader : public PixelShader
+class ReflectPixelShader : public PixelShader
 {
 public:
 	virtual Vector3f execute(const VertexOut& vout);
@@ -43,7 +43,7 @@ public:
 };
 
 
-struct OceanWavePixelShader : public PixelShader
+class OceanWavePixelShader : public PixelShader
 {
 public:
 	virtual Vector3f execute(const VertexOut& vout);

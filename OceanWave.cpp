@@ -46,7 +46,6 @@ OceanWave::~OceanWave()
 	delete m_fftM;
 	delete m_fftN;
 }
-#include <iostream>
 
 void OceanWave::update(float time)
 {
@@ -120,15 +119,12 @@ void OceanWave::update(float time)
 			{
 				minHeight = height;
 			}
-			
-			
 			vertex.pos = { (n - m_N / 2) * m_length / m_N + sign * outDX[index].real,
 							   height,
 						   (m - m_M / 2) * m_length / m_M + sign * outDZ[index].real};
 						   
 			vertex.normal = { sign * outSlopeX[index].imag, 1.f, sign * outSlopeZ[index].imag };
 			vertex.normal.normalize();
-			//qDebug() << vertex.pos.x << vertex.pos.y;
 		}
 	}
 
@@ -165,7 +161,6 @@ Complex OceanWave::computeTilde(float t, int n, int m)
 
 float OceanWave::phillips(int n, int m)
 {
-	
 	Vector2f k{ PI * (2.f * n - m_N) / m_length, PI * (2.f * m - m_M) / m_length};
 	if (k.x == 0.f && k.y == 0.f)
 	{
