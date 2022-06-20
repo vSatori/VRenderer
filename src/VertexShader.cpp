@@ -14,7 +14,7 @@ Fragment GenericVertexShader::execute(const Vertex& vin)
 	out.normalW.normalize();
 	return out;
 }
-
+#include "Transform.h"
 Fragment SkyVertexShader::execute(const Vertex& vin)
 {
 	Fragment out;
@@ -22,7 +22,7 @@ Fragment SkyVertexShader::execute(const Vertex& vin)
 	view.m[1][3] = 0.f;
     view.m[2][3] = 0.f;;
 	Vector4f posH = projection * view * vector3To4(vin.pos);
-	posH.z = posH.w;
+	posH.z = posH.w * 0.99999f;
 	out.posM = vin.pos;
 	out.posW = out.posM;
 	out.posH = posH;

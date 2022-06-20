@@ -9,12 +9,12 @@ static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 	return pos.z - 0.05f < depth ? 1.f : 0.f;
 }
 
-Vector3f GenericPixelShader::execute(const Fragment& vout)
+Vector3f GenericPixelShader::execute(const Fragment& fm)
 {
 	Vector3f color{ 0.f, 0.f, 0.f };
 	if (texture)
 	{
-		color = bgr2Vector(texture->sample(vout.uv.x, vout.uv.y));
+		color = bgr2Vector(texture->sample(fm.uv.x, fm.uv.y));
 		material.diffuse = color;
 		material.ambient = color;
 	}
@@ -27,9 +27,9 @@ Vector3f GenericPixelShader::execute(const Fragment& vout)
 		float shadow = 1.f;
 		if (depthTexture)
 		{
-			shadow = computeShadow(vout.posD, depthTexture);
+			shadow = computeShadow(fm.posD, depthTexture);
 		}
-		color = light->compute(RenderContext::eyePos, vout.posW, vout.normalW, material, shadow);
+		color = light->compute(RenderContext::eyePos, fm.posW, fm.normalW, material, shadow);
 	}
 	if (!RenderContext::alphaBlending)
 	{
@@ -39,37 +39,37 @@ Vector3f GenericPixelShader::execute(const Fragment& vout)
 	return color * alpha + another * (1.f - alpha);
 }
 
-Vector3f SkyPixelShader::execute(const Fragment& vout)
+Vector3f SkyPixelShader::execute(const Fragment& fm)
 {
-	Vector3f pos = vout.posW;
+	Vector3f pos = fm.posW;
 	pos.normalize();
 	return bgr2Vector(cubeMap->sample(pos));
 }
 
-Vector3f ReflectPixelShader::execute(const Fragment& vout)
+Vector3f ReflectPixelShader::execute(const Fragment& fm)
 {
-	unsigned int value = envCubeMap->sample(vout.posW);
+	unsigned int value = envCubeMap->sample(fm.posW);
 	return bgr2Vector(value);
 }
 
-Vector3f OceanWavePixelShader::execute(const Fragment& vout)
+Vector3f OceanWavePixelShader::execute(const Fragment& fm)
 {
 	Vector3f shallowColor{ 0.f, 0.64f, 0.68f };
 	Vector3f deepColor{ 0.02f, 0.05f, 0.1f };
-	float diff = vout.posW.y - minHeight;
+	float diff = fm.posW.y - minHeight;
 	float height = (diff) / (maxHeight - minHeight);
 
 	Vector3f heightColor = shallowColor * height + deepColor * (1 - height);
 
-	Vector3f viewDir = RenderContext::eyePos - vout.posW;
+	Vector3f viewDir = RenderContext::eyePos - fm.posW;
 	viewDir.normalize();
 
 	Vector3f skyColor{ 0.65f, 0.8f, 0.95f };
-	float refCoeff = powf(std::max(vout.normalW.dot(viewDir), 0.f), 0.3f);
+	float refCoeff = powf(std::max(fm.normalW.dot(viewDir), 0.f), 0.3f);
 	Vector3f reflectColor = skyColor * (1.f - refCoeff);
 
-	Vector3f litDir = light->pos - vout.posW;
-	Vector3f reflectDir = (litDir * -1).reflect(vout.normalW);
+	Vector3f litDir = light->pos - fm.posW;
+	Vector3f reflectDir = (litDir * -1).reflect(fm.normalW);
 	reflectDir.normalize();
 	float specu = powf(std::max(viewDir.dot(reflectDir), 0.f), 32.f) * 3;
 	if (specu > 1.f)

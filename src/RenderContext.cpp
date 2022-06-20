@@ -54,7 +54,7 @@ void RenderContext::clear()
 	for (int i = 0; i < count; ++i)
 	{
 		renderTarget[i] = whiteValue;
-		zbuffer[i] = 1.00001f;
+		zbuffer[i] = 1.f;
 	}
 }
 
@@ -160,7 +160,7 @@ void RenderContext::draw(const Fragment& fm1, const Fragment& fm2, const Fragmen
 	}
 }
 
-bool RenderContext::checkClipping(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3)
+bool RenderContext::clippingTest(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3)
 {
 	if (v1.x + v1.w < 0 || v2.x + v2.w < 0 || v3.x + v3.w < 0)
 	{
@@ -213,10 +213,10 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 
 	Fragment frag;
 	
-	float* pVout = (float*)&frag;
-	const float* pVo1 = (const float*)&fm1;
-	const float* pVo2 = (const float*)&fm2;
-	const float* pVo3 = (const float*)&fm3;
+	float* pfm = (float*)&frag;
+	const float* pfm1 = (const float*)&fm1;
+	const float* pfm2 = (const float*)&fm2;
+	const float* pfm3 = (const float*)&fm3;
 
 	//Vector2f samples[4] = { {-0.125f, -0.375f}, {0.375f, -0.125f}, {-0.375f, 0.125f}, {0.125f, 0.375f} };
 	for (int y = miny; y <= maxy; ++y)
@@ -271,10 +271,10 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 			a /= fm1.posH.w;
 			b /= fm2.posH.w;
 			c /= fm3.posH.w;
-			float hz = 1.f / (a + b + c);
+			float hw = 1.f / (a + b + c);
 			for (int i = 0; i < Fragment::floatSize; ++i)
 			{
-				pVout[i] = (pVo1[i] * a + pVo2[i] * b + pVo3[i] * c) * hz;
+				pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * hw;
 			}
 
 			Vector3f color = ps->execute(frag);

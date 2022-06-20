@@ -60,7 +60,7 @@ public:
 	static bool Cull(const Vector3f& vertexPos, const Vector3f& faceNormal);
 	static bool depthTest(float z, int index);
 	static void draw(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
-	static bool checkClipping(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3);
+	static bool clippingTest(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3);
 	static void drawFragment(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
 	static void resolve();
 	static void drawLine(int x1, int y1, int x2, int y2);

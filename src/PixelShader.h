@@ -10,13 +10,13 @@ using PSFunction = std::function<Vector3f(const Fragment&)>;
 class PixelShader
 {
 public:
-	virtual Vector3f execute(const Fragment& vout) = 0;
+	virtual Vector3f execute(const Fragment& fm) = 0;
 };
 
 class GenericPixelShader : public PixelShader
 {
 public:
-	virtual Vector3f execute(const Fragment& vout);
+	virtual Vector3f execute(const Fragment& fm);
 public:
 	float alpha = 1.f;
 	Vector3f color; 
@@ -29,7 +29,7 @@ public:
 class SkyPixelShader : public PixelShader
 {
 public:
-	virtual Vector3f execute(const Fragment& vout);
+	virtual Vector3f execute(const Fragment& fm);
 public:
 	CubeMap* cubeMap = nullptr;
 };
@@ -37,7 +37,7 @@ public:
 class ReflectPixelShader : public PixelShader
 {
 public:
-	virtual Vector3f execute(const Fragment& vout);
+	virtual Vector3f execute(const Fragment& fm);
 public:
 	CubeMap* envCubeMap = nullptr;
 };
@@ -46,7 +46,7 @@ public:
 class OceanWavePixelShader : public PixelShader
 {
 public:
-	virtual Vector3f execute(const Fragment& vout);
+	virtual Vector3f execute(const Fragment& fm);
 public:
 	float maxHeight;
 	float minHeight;

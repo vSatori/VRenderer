@@ -36,7 +36,7 @@ private:
 	float m_angle;
 
 	SkyBox m_sky;
-	Mesh m_reflectSphere;
+	Mesh m_reflectBox;
 	std::vector<Mesh> m_movingSpheres;
 	CubeMap* m_envCubeMap;
 	

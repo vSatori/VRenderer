@@ -54,7 +54,7 @@ void Scene::drawMesh(const Mesh& mesh, Fragment* vertexBuff)
 			continue;
 		}
 		
-		if (RenderContext::checkClipping(vo1.posH, vo2.posH, vo3.posH))
+		if (RenderContext::clippingTest(vo1.posH, vo2.posH, vo3.posH))
 		{
 			std::vector<Fragment> vos = RenderContext::polygonClipping(vo1, vo2, vo3);
 			for (auto& v : vos)
@@ -91,12 +91,12 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 	MeshFactory::createCube(m_sky, 1.f, 1.f, 1.f);
 	MeshFactory::flipMesh(m_sky);
 	std::vector<std::string> files;
-	files.push_back("D:/Project/Renderer/skybox/skybox/left.jpg");
-	files.push_back("D:/Project/Renderer/skybox/skybox/right.jpg");
-	files.push_back("D:/Project/Renderer/skybox/skybox/top.jpg");
-	files.push_back("D:/Project/Renderer/skybox/skybox/bottom.jpg");
-	files.push_back("D:/Project/Renderer/skybox/skybox/back.jpg");
-	files.push_back("D:/Project/Renderer/skybox/skybox/front.jpg");
+	files.push_back("../../resources/skybox/lake/left.jpg");
+	files.push_back("../../resources/skybox/lake/right.jpg");
+	files.push_back("../../resources/skybox/lake/top.jpg");
+	files.push_back("../../resources/skybox/lake/bottom.jpg");
+	files.push_back("../../resources/skybox/lake/back.jpg");
+	files.push_back("../../resources/skybox/lake/front.jpg");
 	m_sky.cubeMap = std::make_unique<CubeMap>(files);
 
 	std::vector<Vector3f> colors;
@@ -105,7 +105,7 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 	colors[1] = { 1.f, 1.f, 0.f };
 	colors[2] = { 0.f, 1.f, 0.f };
 	colors[3] = { 0.f, 0.f, 1.f };
-	MeshFactory::createCube(m_reflectSphere, 2.f, 2.f, 2.f);
+	MeshFactory::createCube(m_reflectBox, 2.f, 2.f, 2.f);
 	m_movingSpheres.resize(4);
 	for (int i = 0; i < 4; ++i)
 	{
@@ -204,7 +204,7 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	{
 		m_commonVS->world.identity();
 		RenderContext::ps = m_reflectPS;
-		drawMesh(m_reflectSphere);
+		drawMesh(m_reflectBox);
 	}
 	RenderContext::ps = m_spherePS;
 	for (int index = 0; index < m_movingSpheres.size(); ++index)

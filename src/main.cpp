@@ -4,19 +4,16 @@
 #include <Windows.h>
 #include "Scene.h"
 #include "RenderView.h"
-#include <QtCore/qdebug.h>
-#include "RenderContext.h"
+
 
 bool exitApp = false;
 int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
 	RenderView view;
-	//PmxModelScene scene("D:/Project/VRenderer/models/hutao/夏装胡桃/胡桃.pmx");
-	//scene.onlyDrawPmxModel = false;
-	DynamicEnviromentMappingScene scene;
+	PmxModelScene scene("../../resources/bachong/八重神子.pmx");
+	scene.onlyDrawPmxModel = false;
 	view.setScene(&scene);
-	RenderContext::vs;
 	QTimer timer;
 	timer.setInterval(500);
 	timer.setSingleShot(true);
