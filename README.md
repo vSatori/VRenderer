@@ -1,6 +1,8 @@
 # VRenderer
 VRenderer是一个简单的软光栅渲染器，用于图形学知识的实践。
 
+
+
 ## 特性
 
 - 左手坐标系
@@ -17,18 +19,22 @@ VRenderer是一个简单的软光栅渲染器，用于图形学知识的实践�
 
 ## 下一步
 
-- 法线贴图
-- Mipmap
-- PBR
 - MSAA
+- Mipmap
+- 法线贴图
+- PBR
 
 ## 依赖
 
 - Qt5
-- stb_image
-- pmx格式解析
+- [stb_image](https://github.com/nothings/stb)
+- [MMDFormats](https://github.com/oguna/MMDFormats)
 
 ## 参考
 
+- https://github.com/MKXJun/DirectX11-With-Windows-SDK
+- https://learnopengl-cn.github.io/
+- https://en.wikipedia.org/wiki/Cube_mapping
+- https://zhuanlan.zhihu.com/p/162190576
 
 
