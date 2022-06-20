@@ -1,9 +1,11 @@
 # VRenderer
 VRenderer是一个简单的软光栅渲染器，用于图形学知识的实践。
 
-![动态环境贴图](https://github.com/vSatori/VRenderer/blob/main/screenshots/cubemap.png)
+* 动态环境贴图
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/cubemap.png)
 
-
+* 人物
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/bachong.png)
 
 ## 特性
 
