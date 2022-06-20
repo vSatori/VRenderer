@@ -9,12 +9,12 @@ static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 	return pos.z - 0.05f < depth ? 1.f : 0.f;
 }
 
-Vector3f GenericPixelShader::execute(const VertexOut& vout)
+Vector3f GenericPixelShader::execute(const Fragment& vout)
 {
 	Vector3f color{ 0.f, 0.f, 0.f };
 	if (texture)
 	{
-		color = texture->sample(vout.uv.x, vout.uv.y);
+		color = bgr2Vector(texture->sample(vout.uv.x, vout.uv.y));
 		material.diffuse = color;
 		material.ambient = color;
 	}
@@ -39,21 +39,20 @@ Vector3f GenericPixelShader::execute(const VertexOut& vout)
 	return color * alpha + another * (1.f - alpha);
 }
 
-Vector3f SkyPixelShader::execute(const VertexOut& vout)
+Vector3f SkyPixelShader::execute(const Fragment& vout)
 {
 	Vector3f pos = vout.posW;
 	pos.normalize();
-	return cubeMap->sample(pos);
-	return Vector3f();
+	return bgr2Vector(cubeMap->sample(pos));
 }
 
-Vector3f ReflectPixelShader::execute(const VertexOut& vout)
+Vector3f ReflectPixelShader::execute(const Fragment& vout)
 {
 	unsigned int value = envCubeMap->sample(vout.posW);
-	return rgb2Vector(value);
+	return bgr2Vector(value);
 }
 
-Vector3f OceanWavePixelShader::execute(const VertexOut& vout)
+Vector3f OceanWavePixelShader::execute(const Fragment& vout)
 {
 	Vector3f shallowColor{ 0.f, 0.64f, 0.68f };
 	Vector3f deepColor{ 0.02f, 0.05f, 0.1f };

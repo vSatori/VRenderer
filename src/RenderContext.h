@@ -25,6 +25,11 @@ enum class BlendMode
 
 };
 
+enum class Side
+{
+	POSX,NEGX,POSY,NEGY,POSZ,NEGZ,W
+};
+
 
 class RenderContext
 {
@@ -54,16 +59,16 @@ public:
 	static void clear();
 	static bool Cull(const Vector3f& vertexPos, const Vector3f& faceNormal);
 	static bool depthTest(float z, int index);
-	static void draw(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3);
+	static void draw(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
 	static bool checkClipping(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3);
-	static void drawFragment(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3);
+	static void drawFragment(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
 	static void resolve();
 	static void drawLine(int x1, int y1, int x2, int y2);
 	
-	static std::vector<VertexOut> polygonClipping(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3);
-	static VertexOut clipPlane(const VertexOut& vo1, const VertexOut& vo2, int side);
-	static VertexOut clipWPlane(const VertexOut& vo1, const VertexOut& vo2);
-	static bool inside(const Vector4f& pos, int side);
+	static std::vector<Fragment> polygonClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
+	static Fragment clipPlane(const Fragment& fm1, const Fragment& fm2, Side side);
+	static Fragment clipWPlane(const Fragment& fm1, const Fragment& fm2);
+	static bool inside(const Vector4f& pos, Side side);
 	/*
 	static void drawFragmentByScanLine(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);
 	static void drawTopTriangle(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);

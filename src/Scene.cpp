@@ -30,7 +30,7 @@ Scene::~Scene()
 void Scene::drawMesh(const Mesh & mesh)
 {
 	int vertexSize = mesh.vertices.size();
-	VertexOut* vertexBuff = new VertexOut[vertexSize];
+	Fragment* vertexBuff = new Fragment[vertexSize];
 	for (int vIndex = 0; vIndex < vertexSize; ++vIndex)
 	{
 		vertexBuff[vIndex] = RenderContext::vs->execute(mesh.vertices[vIndex]);
@@ -39,24 +39,24 @@ void Scene::drawMesh(const Mesh & mesh)
 	delete[] vertexBuff;
 }
 
-void Scene::drawMesh(const Mesh& mesh, VertexOut* vertexBuff)
+void Scene::drawMesh(const Mesh& mesh, Fragment* vertexBuff)
 {
-	auto vsBegin = GetTickCount64();
 	int faceSize = mesh.indices.size();
 	for (int faceIndex = 0; faceIndex < faceSize; ++faceIndex)
 	{
 		const Vector3i& face = mesh.indices[faceIndex];
-		VertexOut vo1 = vertexBuff[face.x];
-		VertexOut vo2 = vertexBuff[face.y];
-		VertexOut vo3 = vertexBuff[face.z];
+		Fragment vo1 = vertexBuff[face.x];
+		Fragment vo2 = vertexBuff[face.y];
+		Fragment vo3 = vertexBuff[face.z];
 		Vector3f faceNormal = (vo2.posW - vo1.posW).cross(vo3.posW - vo2.posW);
 		if (!RenderContext::Cull(vo1.posW, faceNormal))
 		{
 			continue;
 		}
+		
 		if (RenderContext::checkClipping(vo1.posH, vo2.posH, vo3.posH))
 		{
-			std::vector<VertexOut> vos = RenderContext::polygonClipping(vo1, vo2, vo3);
+			std::vector<Fragment> vos = RenderContext::polygonClipping(vo1, vo2, vo3);
 			for (auto& v : vos)
 			{
 				perspectiveDivide(v.posH);
@@ -89,6 +89,7 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 
 {
 	MeshFactory::createCube(m_sky, 1.f, 1.f, 1.f);
+	MeshFactory::flipMesh(m_sky);
 	std::vector<std::string> files;
 	files.push_back("D:/Project/Renderer/skybox/skybox/left.jpg");
 	files.push_back("D:/Project/Renderer/skybox/skybox/right.jpg");
@@ -96,7 +97,7 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 	files.push_back("D:/Project/Renderer/skybox/skybox/bottom.jpg");
 	files.push_back("D:/Project/Renderer/skybox/skybox/back.jpg");
 	files.push_back("D:/Project/Renderer/skybox/skybox/front.jpg");
-	m_sky.cubeMap = std::make_unique<StaticCubeMap>(files);
+	m_sky.cubeMap = std::make_unique<CubeMap>(files);
 
 	std::vector<Vector3f> colors;
 	colors.resize(4);
@@ -113,7 +114,7 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 		m_movingSpheres[i].material.diffuse = colors[i];
 	}
 	
-	m_envCubeMap = new DynamicCubeMap;
+	m_envCubeMap = new CubeMap;
 	
 	m_reflectPS = new ReflectPixelShader;
 	m_commonVS  = new GenericVertexShader;
@@ -131,7 +132,7 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 	camera.pos = { 0.f, 0.f, -5.f };
 	camera.target = { 0.f, 0.f, 0.f };
 
-	nearPlane = 1.f;
+	nearPlane = 0.1f;
 	farPlane = 1000.f;
 	fov = 90.f;
 }
@@ -174,7 +175,7 @@ void DynamicEnviromentMappingScene::render()
 		RenderContext::renderTarget = buff;
 		camera.target = targets[i];
 		render(false);
-		m_envCubeMap->setRowData(static_cast<DynamicCubeMap::Direction>(i), buff, RenderContext::width, RenderContext::height);
+		m_envCubeMap->setRowData(static_cast<CubeMap::Direction>(i), buff, RenderContext::width, RenderContext::height);
 		delete[] buff;
 	}
 	
@@ -201,7 +202,7 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	RenderContext::vs = m_commonVS;
 	if (drawRelect)
 	{
-		m_commonVS->world.init();
+		m_commonVS->world.identity();
 		RenderContext::ps = m_reflectPS;
 		drawMesh(m_reflectSphere);
 	}
@@ -215,18 +216,17 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 		m_spherePS->material = movingSphere.material;
 		drawMesh(movingSphere);		
 	}
+
 	RenderContext::cullMode = CullMode::CULLNONE;
-	RenderContext::clockwise = true;
 	RenderContext::vs = m_skyVS;
 	RenderContext::ps = m_skyPS;
 	m_skyVS->view = camera.matrix;
 	m_skyVS->projection = projection;
 	drawMesh(m_sky);
-	RenderContext::clockwise = false;
 }
 
 ShadowMappingScene::ShadowMappingScene() : 
-	m_angle(0.f),
+	m_angle       (0.f),
 	m_commonVS    (nullptr),
 	m_commonPS    (nullptr),
 	m_shadowVS    (nullptr),
@@ -237,7 +237,7 @@ ShadowMappingScene::ShadowMappingScene() :
 	MeshFactory::createSphere(m_sphere, 1.f, 30, 30);
 	MeshFactory::createCube(m_ground, 5.f, 1.f, 5.f);
 
-	m_sphere.material.ambient   =  { 1.f, 0.f, 0.f };
+	m_sphere.material.ambient   = { 1.f, 0.f, 0.f };
 	m_sphere.material.diffuse   = { 1.f, 0.f, 0.f };
 	m_sphere.material.specular  = { 0.5f, 0.5f, 0.5f };
 	m_sphere.material.shininess = 32.f;
@@ -332,7 +332,7 @@ void ShadowMappingScene::renderShadow()
 	
 	m_shadowVS->world = Transform::translate(0.f, -1.7f, 0.f);
 	drawMesh(m_ground);
-	m_shadowVS->world.init();
+	m_shadowVS->world.identity();
 	drawMesh(m_sphere);
 
 	
@@ -366,7 +366,7 @@ void ShadowMappingScene::renderScene()
 	m_commonPS->material = m_ground.material;
 	drawMesh(m_ground);
 
-	m_commonVS->world.init();
+	m_commonVS->world.identity();
 	m_commonVS->world3 = Matrix4To3(m_commonVS->world);
 	m_commonPS->material = m_sphere.material;
 	drawMesh(m_sphere);
@@ -406,6 +406,7 @@ static std::wstring string2wstring(std::string sToMatch)
 }
 
 PmxModelScene::PmxModelScene(const std::string& modelpath) : 
+	onlyDrawPmxModel(false),
 	m_angle(0.f),
 	m_VS   (nullptr),
 	m_PS   (nullptr),
@@ -474,16 +475,6 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) :
 
 	MeshFactory::createCube(m_lightBox, 0.2f, 0.2f, 0.2f);
 
-	nearPlane = 1.f;
-	farPlane = 1000.f;
-
-	camera.useSphereMode = true;
-	camera.pitch = 0.f;
-	camera.yaw = -90.f;
-	camera.radius = 20;
-	camera.target = { 0.f, 10.f, 0.f };
-	fov = 75.f;
-
 	PointLight* lit = new PointLight;
 	lit->ambient = { 0.2f, 0.2f, 0.2f };
 	lit->constant = 0.1f;
@@ -493,10 +484,19 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) :
 
 	m_VS = new GenericVertexShader;
 	m_PS = new GenericPixelShader;
-	m_PS->color = { 0.f, 0.7f, 1.f };
 
-	onlyDrawPmxModel = false;
-	m_angle = 0.f;
+
+	camera.useSphereMode = true;
+	camera.pitch = 0.f;
+	camera.yaw = -90.f;
+	camera.radius = 20;
+	camera.target = { 0.f, 10.f, 0.f };
+	fov = 75.f;
+
+	nearPlane = 1.f;
+	farPlane = 1000.f;
+
+
 }
 
 PmxModelScene::~PmxModelScene()
@@ -533,20 +533,19 @@ void PmxModelScene::render()
 	m_light->pos = { x, y, z };
 
 	RenderContext::clear();
-	RenderContext::vs = m_VS;
-	RenderContext::ps = m_PS;
-	RenderContext::cullMode = CullMode::CULLBACKFACE;
-	RenderContext::fillMode = FillMode::SOLID;
 	camera.update();
 	RenderContext::eyePos = camera.pos;
 
+	RenderContext::vs = m_VS;
+	RenderContext::ps = m_PS;
+	m_VS->world.identity();
 	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
 	m_PS->light = onlyDrawPmxModel ? nullptr : m_light;
 
 	int vertexSize = m_model[0].vertices.size();
-	std::vector<VertexOut> buff;
+	std::vector<Fragment> buff;
 	buff.resize(vertexSize);
 	for (int vIndex = 0; vIndex < vertexSize; ++vIndex)
 	{
@@ -556,7 +555,7 @@ void PmxModelScene::render()
 	for (int i = 0; i < m_model.size(); ++i)
 	{
 		m_PS->texture = m_model[i].texture.get();
-		drawMesh(m_model[i], (VertexOut*)&buff[0]);
+		drawMesh(m_model[i], (Fragment*)&buff[0]);
 	}
 	if (onlyDrawPmxModel)
 	{
@@ -566,19 +565,13 @@ void PmxModelScene::render()
 	m_PS->texture = nullptr;
 	m_PS->material = m_bigBox.material;
 	drawMesh(m_bigBox);
-	m_VS->world.init();
-	m_PS->texture = nullptr;
-	m_PS->material = m_bigBox.material;
+
 
 	m_VS->world = Transform::translate(x, y, z);
 	m_PS->texture = nullptr;
 	m_PS->material = m_lightBox.material;
 	m_PS->light = nullptr;
 	drawMesh(m_lightBox);
-	m_VS->world.init();
-	m_PS->texture = nullptr;
-	m_PS->material = m_lightBox.material;
-	m_PS->light = m_light;
 }
 
 

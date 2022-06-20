@@ -1,5 +1,5 @@
 #pragma once
-#include <string.h>
+#include <string>
 #include <math.h>
 #define PI 3.1415926535f
 
@@ -13,10 +13,7 @@ struct Vector2
 {
 public:
 	Vector2(){}
-	Vector2(T x, T y) :x(x), y(y)
-	{
-
-	}
+	Vector2(T x, T y) :x(x), y(y){}
 	inline T length() const
 	{
 		return sqrtf(x * x + y * y);
@@ -80,8 +77,8 @@ public:
 		return *this;
 	}
 public:
-	T x;
-	T y;
+	T x = T();
+	T y = T();
 };
 
 using Vector2i = Vector2<int>;
@@ -211,9 +208,9 @@ public:
 		return res;
 	}
 public:
-	T x;
-	T y;
-	T z;
+	T x = T();
+	T y = T();
+	T z = T();
 };
 
 using Vector3i = Vector3<int>;
@@ -323,10 +320,10 @@ public:
 		return x * vec4.x + y * vec4.y + z * vec4.z + w * vec4.w;
 	}
 public:
-	T x;
-	T y;
-	T z;
-	T w;
+	T x = T();
+	T y = T();
+	T z = T();
+	T w = T();
 };
 
 using Vector4i = Vector4<int>;
@@ -337,9 +334,18 @@ struct Matrix3
 public:
 	Matrix3()
 	{
-		init();
+		identity();
 	}
-	inline void init()
+
+	inline void zero()
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			memset(m[i], 0, sizeof(float) * 3);
+		}
+	}
+
+	inline void identity()
 	{
 		for (int i = 0; i < 3; ++i)
 		{
@@ -404,9 +410,17 @@ struct Matrix4
 public:
 	Matrix4()
 	{
-		init();
+		identity();
 	}
-	inline void init()
+
+	inline void zero()
+	{
+		for (int i = 0; i < 4; ++i)
+		{
+			memset(m[i], 0, sizeof(float) * 4);
+		}
+	}
+	inline void identity()
 	{
 		for (int i = 0; i < 4; ++i)
 		{

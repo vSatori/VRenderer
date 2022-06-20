@@ -12,7 +12,9 @@ int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
 	RenderView view;
-	OceanWaveScene scene;
+	//PmxModelScene scene("D:/Project/VRenderer/models/hutao/ÏÄ×°ºúÌÒ/ºúÌÒ.pmx");
+	//scene.onlyDrawPmxModel = false;
+	DynamicEnviromentMappingScene scene;
 	view.setScene(&scene);
 	RenderContext::vs;
 	QTimer timer;

@@ -9,8 +9,14 @@ Texture::Texture() :
 	m_maxWidthIndex(0),
 	m_maxHeightIndex(0)
 {
+	
 }
-Texture::Texture(const char* fileName)
+Texture::Texture(const char* fileName) : 
+	m_rowData(nullptr),
+	m_width(0),
+	m_height(0),
+	m_maxWidthIndex(0),
+	m_maxHeightIndex(0)
 {
 	int comp = 0;
 	int width = 0;
@@ -43,14 +49,9 @@ void Texture::setRowData(unsigned int * data, int width, int height)
 	memcpy(m_rowData, data, size * sizeof(unsigned int));
 }
 
-Vector3f Texture::sample(float u, float v)
-{
-	int x = static_cast<int>(u * m_maxWidthIndex  + 0.5f);
-	int y = static_cast<int>(v * m_maxHeightIndex + 0.5f);
-	return m_components[y * m_width + x];
-}
 
-unsigned int Texture::sampleValue(float u, float v)
+
+unsigned int Texture::sample(float u, float v)
 {
 	int x = static_cast<int>(u * m_maxWidthIndex  + 0.5f);
 	int y = static_cast<int>(v * m_maxHeightIndex + 0.5f);
@@ -60,21 +61,18 @@ unsigned int Texture::sampleValue(float u, float v)
 void Texture::fillData(unsigned char * data, int comp)
 {
 	unsigned int size = m_width * m_height;
-	m_components.resize(m_width * m_height);
+	m_rowData = new unsigned int[size];
 	for (int y = 0; y < m_height; ++y)
 	{
 		for (int x = 0; x < m_width; ++x)
 		{
 			int index = y * m_width + x;
 			unsigned char* color = data + index * comp;
-			float r = (float)(color[0]) / 255.f;
-			float g = (float)(color[1]) / 255.f;
-			float b = (float)(color[2]) / 255.f;
-			m_components[index] = { r, g, b };
+			unsigned int val = (color[0] << 16) + (color[1] << 8) + color[2];
+			m_rowData[index] = val;
 		}
 	}
-	m_rowData = new unsigned int[size];
-	memcpy(m_rowData, data, size * sizeof(char) * comp);
+	
 }
 
 void Texture::setSize(int width, int height)
@@ -116,7 +114,7 @@ void DepthTexture::setRowData(float* data, int width, int height)
 
 float DepthTexture::sample(float u, float v)
 {
-	int x = static_cast<int>(u * m_maxWidthIndex + 0.5f);
+	int x = static_cast<int>(u * m_maxWidthIndex  + 0.5f);
 	int y = static_cast<int>(v * m_maxHeightIndex + 0.5f);
 	return m_rowData[y * m_width + x];
 }
@@ -139,110 +137,77 @@ CubeMap::CubeMap()
 	}
 }
 
-bool CubeMap::computeDirectionAndUV(const Vector3f& vec, Direction& direction, float& u, float& v)
+CubeMap::CubeMap(const std::vector<std::string>& files)
 {
-	float absx = abs(vec.x);
-	float absy = abs(vec.y);
-	float absz = abs(vec.z);
-	float maxValue = std::max(std::max(absx, absy), abs(absz));
-	if (maxValue == 0.f)
-	{
-		return false;
-	}
-	float x, y;
-	//Direction direction;
-	if (maxValue == absx)
-	{
-		if (vec.x > 0.f)
-		{
-			x = 1.f - (vec.z / maxValue + 1.f) / 2.f;
-			y = 1.f - (vec.y / maxValue + 1.f) / 2.f;
-			direction = Direction::RIGHT;
-		}
-		else
-		{
-			x = (vec.z / maxValue + 1.f) / 2.f;
-			y = 1.f - (vec.y / maxValue + 1.f) / 2.f;
-			direction = Direction::LEFT;
-		}
-	}
-	else if (maxValue == absy)
-	{
-		if (vec.y > 0.f)
-		{
-			x = (vec.x / maxValue + 1.f) / 2.f;
-			y = (vec.z / maxValue + 1.f) / 2.f;
-			direction = Direction::TOP;
-		}
-		else
-		{
-			x = (vec.x / maxValue + 1.f) / 2.f;
-			y = 1.f - (vec.z / maxValue + 1.f) / 2.f;
-			direction = Direction::BOTTOM;
-		}
-	}
-	else
-	{
-		if (vec.z > 0.f)
-		{
-			x = (vec.x / maxValue + 1.f) / 2.f;
-			y = 1.f - (vec.y / maxValue + 1.f) / 2.f;
-			direction = Direction::BACK;
-		}
-
-		else
-		{
-			x = 1.f - (vec.x / maxValue + 1.f) / 2.f;
-			y = (1.f - vec.y / maxValue) / 2.f;
-			direction = Direction::FRONT;
-		}
-	}
-	u = x;
-	v = y;
-	return true;
-}
-
-
-
-DynamicCubeMap::DynamicCubeMap()
-{
-	
-}
-
-void DynamicCubeMap::setRowData(Direction dir, unsigned int * data, int width, int height)
-{
-	m_textures[static_cast<int>(dir)]->setRowData(data, width, height);
-}
-
-unsigned int DynamicCubeMap::sample(const Vector3f & dir)
-{
-	Direction direction;
-	float u, v;
-	if (!computeDirectionAndUV(dir, direction, u, v))
-	{
-		return 0;
-	}
-	
-	return m_textures[static_cast<int>(direction)]->sampleValue(u, v);
-}
-
-
-
-StaticCubeMap::StaticCubeMap(const std::vector<std::string>& files)
-{
+	m_textures.resize(6);
 	for (int i = 0; i < 6; ++i)
 	{
 		m_textures[i] = std::make_unique<Texture>(files[i].c_str());
 	}
 }
 
-Vector3f StaticCubeMap::sample(const Vector3f& dir)
+unsigned int CubeMap::sample(const Vector3f& dir)
 {
-	Direction direction;
-	float u, v;
-	if (!computeDirectionAndUV(dir, direction, u, v))
+	float absx = abs(dir.x);
+	float absy = abs(dir.y);
+	float absz = abs(dir.z);
+	float maxValue = std::max(std::max(absx, absy), abs(absz));
+	if (maxValue == 0.f)
 	{
-		return {0.f, 0.f, 0.f};
+		return false;
 	}
-	return m_textures[static_cast<int>(direction)]->sample(u, v);
+	float x, y;
+	Direction direction;
+	if (maxValue == absx)
+	{
+		if (dir.x > 0.f)
+		{
+			x = 1.f - (dir.z / maxValue + 1.f) / 2.f;
+			y = 1.f - (dir.y / maxValue + 1.f) / 2.f;
+			direction = Direction::RIGHT;
+		}
+		else
+		{
+			x = (dir.z / maxValue + 1.f) / 2.f;
+			y = 1.f - (dir.y / maxValue + 1.f) / 2.f;
+			direction = Direction::LEFT;
+		}
+	}
+	else if (maxValue == absy)
+	{
+		if (dir.y > 0.f)
+		{
+			x = (dir.x / maxValue + 1.f) / 2.f;
+			y = (dir.z / maxValue + 1.f) / 2.f;
+			direction = Direction::TOP;
+		}
+		else
+		{
+			x = (dir.x / maxValue + 1.f) / 2.f;
+			y = 1.f - (dir.z / maxValue + 1.f) / 2.f;
+			direction = Direction::BOTTOM;
+		}
+	}
+	else
+	{
+		if (dir.z > 0.f)
+		{
+			x = (dir.x / maxValue + 1.f) / 2.f;
+			y = 1.f - (dir.y / maxValue + 1.f) / 2.f;
+			direction = Direction::BACK;
+		}
+
+		else
+		{
+			x = 1.f - (dir.x / maxValue + 1.f) / 2.f;
+			y = (1.f - dir.y / maxValue) / 2.f;
+			direction = Direction::FRONT;
+		}
+	}
+	return m_textures[static_cast<int>(direction)]->sample(x, y);
+}
+
+void CubeMap::setRowData(Direction dir, unsigned int* data, int width, int height)
+{
+	m_textures[static_cast<int>(dir)]->setRowData(data, width, height);
 }

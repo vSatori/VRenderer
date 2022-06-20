@@ -1,12 +1,12 @@
 #pragma once
 #include <functional>
 #include "Mesh.h"
-using VSFunction = std::function<VertexOut(const Vertex&)>;
+using VSFunction = std::function<Fragment(const Vertex&)>;
 
 class VertexShader
 {
 public:
-	virtual VertexOut execute(const Vertex& vin) = 0;
+	virtual Fragment execute(const Vertex& vin) = 0;
 public:
 	Matrix4 world;
 	Matrix4 view;
@@ -18,7 +18,7 @@ public:
 class GenericVertexShader : public VertexShader
 {
 public:
-	virtual VertexOut execute(const Vertex& vin);
+	virtual Fragment execute(const Vertex& vin);
 public:
 	Matrix4 shadow;
 };
@@ -26,12 +26,12 @@ public:
 class SkyVertexShader : public VertexShader
 {
 public:
-	virtual VertexOut execute(const Vertex& vin);
+	virtual Fragment execute(const Vertex& vin);
 };
 
 class ShadowMapVertexShader: public VertexShader
 {
 public:
-	virtual VertexOut execute(const Vertex& vin);
+	virtual Fragment execute(const Vertex& vin);
 };
 

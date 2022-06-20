@@ -62,38 +62,34 @@ bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 {
 	switch (cullMode)
 	{
-	case CullMode::CULLNONE:
-	{
-		return true;
-	}
-	case CullMode::CULLFRONTFACE:
-	{
-		bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
-		if (clockwise)
+		case CullMode::CULLNONE:
 		{
-			return !b;
+			return true;
 		}
-		return b;
-
-		//return ~((faceNormal.dot(eyePos - vertexPos) <= 0) ^ clockwise);
-	}
-	case CullMode::CULLBACKFACE:
-	{
-	
-		bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
-		if (clockwise)
+		case CullMode::CULLFRONTFACE:
 		{
+			bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
+			if (clockwise)
+			{
+				return !b;
+			}
 			return b;
+			//return ~((faceNormal.dot(eyePos - vertexPos) <= 0) ^ clockwise);
 		}
-		return !b;
-
-		//return ~((faceNormal.dot(eyePos - vertexPos) >= 0) ^ clockwise));
-		
-	}
-	default:
-	{
-		return false;
-	}
+		case CullMode::CULLBACKFACE:
+		{
+			bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
+			if (clockwise)
+			{
+				return b;
+			}
+			return !b;
+			//return ~((faceNormal.dot(eyePos - vertexPos) >= 0) ^ clockwise));
+		}
+		default:
+		{
+			return false;
+		}
 	}
 }
 
@@ -101,64 +97,66 @@ bool RenderContext::depthTest(float z, int index)
 {
 	switch (depthMode)
 	{
-	case DepthMode::NEVER:
-	{
-		return false;
-	}
-	case DepthMode::LESS:
-	{
-		return z < zbuffer[index];
-	}
-	case DepthMode::EQUAL:
-	{
-		return z == zbuffer[index];
-	}
-	case DepthMode::LESSEQUAL:
-	{
-		return z <= zbuffer[index];
-	}
-	case DepthMode::ALWAYS:
-	{
-		return true;
-	}
-	default:
-		return false;
+		case DepthMode::NEVER:
+		{
+			return false;
+		}
+		case DepthMode::LESS:
+		{
+			return z < zbuffer[index];
+		}
+		case DepthMode::EQUAL:
+		{
+			return z == zbuffer[index];
+		}
+		case DepthMode::LESSEQUAL:
+		{
+			return z <= zbuffer[index];
+		}
+		case DepthMode::ALWAYS:
+		{
+			return true;
+		}
+		default:
+			return false;
 	}
 	return false;
 }
 
-void RenderContext::draw(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
+void RenderContext::draw(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3)
 {
 	switch (fillMode)
 	{
-	case FillMode::SOLID:
-	{
-		drawFragment(vo1, vo2, vo3);
-		break;
-	}
-	case FillMode::WIREFRAME:
-	{
-		Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  ((1.f - vo1.posH.y) * 0.5f * height) };
-		Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  ((1.f - vo2.posH.y) * 0.5f * height) };
-		Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
-		int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
-		int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
-		int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
-		int h = height - 1;
-		int w = width  - 1;
-		x1 = clamp(0, w, x1);
-		x2 = clamp(0, w, x2);
-		x3 = clamp(0, w, x3);
-		y1 = clamp(0, h, y1);
-		y2 = clamp(0, h, y2);
-		y3 = clamp(0, h, y3);
-		drawLine(x1, y1, x2, y2);
-		drawLine(x2, y2, x3, y3);
-		drawLine(x3, y3, x1, y1);
-		break;
-	}
-	default:
-		break;
+		case FillMode::SOLID:
+		{
+			drawFragment(fm1, fm2, fm3);
+			break;
+		}
+		case FillMode::WIREFRAME:
+		{
+			Vector2f p1{ ((fm1.posH.x + 1.f) * 0.5f * width),  ((1.f - fm1.posH.y) * 0.5f * height) };
+			Vector2f p2{ ((fm2.posH.x + 1.f) * 0.5f * width),  ((1.f - fm2.posH.y) * 0.5f * height) };
+			Vector2f p3{ ((fm3.posH.x + 1.f) * 0.5f * width),  ((1.f - fm3.posH.y) * 0.5f * height) };
+
+			int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
+			int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
+			int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
+
+			int h = height - 1;
+			int w = width  - 1;
+			x1 = clamp(0, w, x1);
+			x2 = clamp(0, w, x2);
+			x3 = clamp(0, w, x3);
+			y1 = clamp(0, h, y1);
+			y2 = clamp(0, h, y2);
+			y3 = clamp(0, h, y3);
+			drawLine(x1, y1, x2, y2);
+			drawLine(x2, y2, x3, y3);
+			drawLine(x3, y3, x1, y1);
+			break;
+		}
+		default:
+			break;
 	}
 }
 
@@ -188,19 +186,21 @@ bool RenderContext::checkClipping(const Vector4f& v1, const Vector4f& v2, const 
 	{
 		return true;
 	}
+	
 	float w = clipW > nearPlane ? clipW : nearPlane;
 	if (v1.w < w || v2.w < w || v3.w < w)
 	{
 		return true;
 	}
+	
 	return false;
 }
 #include <iostream>
-void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, const VertexOut & vo3)
+void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, const Fragment & fm3)
 {
-	Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  ((1.f - vo1.posH.y) * 0.5f * height) };
-	Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  ((1.f - vo2.posH.y) * 0.5f * height) };
-	Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
+	Vector2f p1{ ((fm1.posH.x + 1.f) * 0.5f * width),  ((1.f - fm1.posH.y) * 0.5f * height) };
+	Vector2f p2{ ((fm2.posH.x + 1.f) * 0.5f * width),  ((1.f - fm2.posH.y) * 0.5f * height) };
+	Vector2f p3{ ((fm3.posH.x + 1.f) * 0.5f * width),  ((1.f - fm3.posH.y) * 0.5f * height) };
 
 	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
     int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
@@ -211,12 +211,12 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 	int maxx = std::min(findMax(x1, x2, x3), width  - 1);
 	int maxy = std::min(findMax(y1, y2, y3), height - 1);
 
-	VertexOut vout;
+	Fragment frag;
 	
-	float* pVout = (float*)&vout;
-	const float* pVo1 = (const float*)&vo1;
-	const float* pVo2 = (const float*)&vo2;
-	const float* pVo3 = (const float*)&vo3;
+	float* pVout = (float*)&frag;
+	const float* pVo1 = (const float*)&fm1;
+	const float* pVo2 = (const float*)&fm2;
+	const float* pVo3 = (const float*)&fm3;
 
 	//Vector2f samples[4] = { {-0.125f, -0.375f}, {0.375f, -0.125f}, {-0.375f, 0.125f}, {0.125f, 0.375f} };
 	for (int y = miny; y <= maxy; ++y)
@@ -255,7 +255,7 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 			float b = areaB / area;
 			float c = areaC / area;
 
-			float z = (vo1.posH.z * a + vo2.posH.z * b + vo3.posH.z * c);
+			float z = (fm1.posH.z * a + fm2.posH.z * b + fm3.posH.z * c);
 			currentPixelIndex = width * y + x;
 			if (!depthTest(z, currentPixelIndex))
 			{
@@ -268,16 +268,16 @@ void RenderContext::drawFragment(const VertexOut & vo1, const VertexOut & vo2, c
 				continue;
 			}
 
-			a /= vo1.posH.w;
-			b /= vo2.posH.w;
-			c /= vo3.posH.w;
+			a /= fm1.posH.w;
+			b /= fm2.posH.w;
+			c /= fm3.posH.w;
 			float hz = 1.f / (a + b + c);
-			for (int i = 0; i < VertexOut::floatSize; ++i)
+			for (int i = 0; i < Fragment::floatSize; ++i)
 			{
 				pVout[i] = (pVo1[i] * a + pVo2[i] * b + pVo3[i] * c) * hz;
 			}
 
-			Vector3f color = ps->execute(vout);
+			Vector3f color = ps->execute(frag);
 			float* pc = (float*)&color;
 			for (int i = 0; i < 3; ++i)
 			{
@@ -359,168 +359,167 @@ void RenderContext::drawLine(int x1, int y1, int x2, int y2)
 
 
 
-std::vector<VertexOut> RenderContext::polygonClipping(const VertexOut& vo1, const VertexOut& vo2, const VertexOut& vo3)
+std::vector<Fragment> RenderContext::polygonClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3)
 {
-	std::vector<VertexOut> output;
-	std::vector<VertexOut> inputW{ vo1, vo2, vo3 };
-	for (int i = 0; i < inputW.size(); ++i)
+	std::vector<Fragment> output;
+	std::vector<Fragment> inputW{ fm1, fm2, fm3 };
+	int wsize = inputW.size();
+	for (int i = 0; i < wsize; ++i)
 	{
 		auto& current = inputW[i];
-		auto& last = inputW[(i + inputW.size() - 1) % inputW.size()];
+		auto& last = inputW[(i + wsize - 1) % wsize];
 
-		if (inside(current.posH, 6))
+		if (inside(current.posH, Side::W))
 		{
-			if (!inside(last.posH, 6))
+			if (!inside(last.posH, Side::W))
 			{
 				output.push_back(clipWPlane(current, last));
 
 			}
 			output.push_back(current);
 		}
-		else if (inside(last.posH, 6))
+		else if (inside(last.posH, Side::W))
 		{
 			output.push_back(clipWPlane(current, last));
 		}
 	}
 	for (int i = 0; i < 6; ++i)
 	{
-		std::vector<VertexOut> input(output);
+		std::vector<Fragment> input(output);
 		output.clear();
 		int size = input.size();
 		for (int j = 0; j < size; ++j)
 		{
 			auto& current = input[j];
 			auto& last = input[(j + size - 1) % size];
-			if (inside(current.posH, i))
+			Side side = static_cast<Side>(i);
+			if (inside(current.posH, side))
 			{
-				if (!inside(last.posH, i))
+				if (!inside(last.posH, side))
 				{
-					output.push_back(clipPlane(last, current, i));
+					output.push_back(clipPlane(last, current, side));
 				}
 				output.push_back(current);
 			}
-			else if (inside(last.posH, i))
+			else if (inside(last.posH, side))
 			{
-				output.push_back(clipPlane(last, current, i));
+				output.push_back(clipPlane(last, current, side));
 			}
 		}
 	}
 	return output;
 }
 
-VertexOut RenderContext::clipPlane(const VertexOut& vo1, const VertexOut& vo2, int side)
+Fragment RenderContext::clipPlane(const Fragment& fm1, const Fragment& fm2, Side side)
 {
 	float k1, k2;
 	switch (side)
 	{
-	case 0:
-	case 1:
+	case Side::POSX:
+	case Side::NEGX:
 	{
-		k1 = vo1.posH.x;
-		k2 = vo2.posH.x;
+		k1 = fm1.posH.x;
+		k2 = fm2.posH.x;
 		break;
 	}
-	case 2:
-	case 3:
+	case Side::POSY:
+	case Side::NEGY:
 	{
-		k1 = vo1.posH.y;
-		k2 = vo2.posH.y;
+		k1 = fm1.posH.y;
+		k2 = fm2.posH.y;
 		break;
 	}
-	case 4:
-	case 5:
+	case Side::POSZ:
+	case Side::NEGZ:
 	{
-		k1 = vo1.posH.z;
-		k2 = vo2.posH.z;
+		k1 = fm1.posH.z;
+		k2 = fm2.posH.z;
 		break;
 	}
-	case 6:
+	case Side::W:
 	{
-		k1 = vo1.posH.w;
-		k2 = vo2.posH.w;
+		k1 = fm1.posH.w;
+		k2 = fm2.posH.w;
 		break;
 	}
 	}
-	if (side == 0 || side == 3 || side == 4)
+	if (static_cast<int>(side) % 2)
 	{
 		k1 *= -1;
 		k2 *= -1;
 	}
-	float t = (vo1.posH.w - k1) / ((vo1.posH.w - k1) - (vo2.posH.w - k2));
+	float t = (fm1.posH.w - k1) / ((fm1.posH.w - k1) - (fm2.posH.w - k2));
 	/*
 	float c1 = v1.dot(side);
 	float c2 = v2.dot(side);
 	float weight = c2 / (c2 - c1);
 	*/
-	return vo1 + (vo2 - vo1) * t;
+	return fm1 + (fm2 - fm1) * t;
 }
 
-VertexOut RenderContext::clipWPlane(const VertexOut& vo1, const VertexOut& vo2)
+Fragment RenderContext::clipWPlane(const Fragment& fm1, const Fragment& fm2)
 {
 	float w = clipW > nearPlane ? clipW : nearPlane;
-	float t = (vo1.posH.w - w) / (vo1.posH.w - vo2.posH.w);
-	VertexOut vo = vo1 + (vo2 - vo1) * t;
-	return vo;
+	float t = (fm1.posH.w - w) / (fm1.posH.w - fm2.posH.w);
+    return fm1 + (fm2 - fm1) * t;
 }
 
-bool RenderContext::inside(const Vector4f& pos, int side)
+bool RenderContext::inside(const Vector4f& pos, Side side)
 {
 	bool in = true;
 	switch (side)
 	{
-	case 0:
-	{
-		in = pos.x >= -pos.w;
-		break;
-	}
-	case 1:
+	case Side::POSX:
 	{
 		in = pos.x <= pos.w;
 		break;
 	}
-	case 2:
+	case Side::NEGX:
+	{
+		in = pos.x >= -pos.w;
+		break;
+	}
+	case Side::POSY:
 	{
 		in = pos.y <= pos.w;
 		break;
 	}
-	case 3:
+	case Side::NEGY:
 	{
 		in = pos.y >= -pos.w;
-
 		break;
 	}
-	case 4:
-	{
-		in = pos.z >= -pos.w;
-		break;
-	}
-	case 5:
+	case Side::POSZ:
 	{
 		in = pos.z <= pos.w;
 		break;
 	}
-	case 6:
+	case Side::NEGZ:
+	{
+		in = pos.z >= -pos.w;
+		break;
+	}
+	case Side::W:
 	{
 		float w = clipW > nearPlane ? clipW : nearPlane;
 		in = pos.w >= w;
-
 		break;
 	}
 	}
 	return in;
 }
-
-static void lerp(VertexOut& vo, const VertexOut& vo1, const VertexOut& vo2, float t)
+/*
+static void lerp(Fragment& vo, const Fragment& vo1, const Fragment& vo2, float t)
 {
 	float* pv = (float*)(&vo);
 	const float* pv1 = (const float*)(&vo1);
 	const float* pv2 = (const float*)(&vo2);
-	for (int i = 0; i < VertexOut::floatSize; ++i)
+	for (int i = 0; i < Fragment::floatSize; ++i)
 	{
 		pv[i] = pv1[i] + (pv2[i] - pv1[i]) * t;
 	}
 }
-/*
+
 static void lerp(VertexOut& vo, const VertexOut& vo1, const VertexOut& vo2, float t)
 {
 	float* pv = (float*)(&vo1);

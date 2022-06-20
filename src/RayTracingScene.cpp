@@ -5,7 +5,7 @@
 static float random()
 {
 	std::random_device rd;
-	std::uniform_real_distribution<double> dist(0.0, 1.0);
+	std::uniform_real_distribution<float> dist(0.0f, 1.0f);
 	std::mt19937 gen(rd());
 	float r = dist(gen);
 	return r;
@@ -137,7 +137,7 @@ bool HitSphere::hit(const Ray& ray, float tMin, float tMax, HitRecord& record) c
 	float root = (-hb - sqrtd) / a;
 	if (root < tMin || root > tMax)
 	{
-		root - (-hb + sqrtd) / a;
+		root = (-hb + sqrtd) / a;
 		if (root < tMin || root > tMax)
 		{
 			return false;

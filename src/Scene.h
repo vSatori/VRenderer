@@ -15,7 +15,7 @@ public:
 	virtual void render() = 0;
 protected:
 	void drawMesh(const Mesh& mesh);
-	void drawMesh(const Mesh& mesh, VertexOut* vertexBuff);
+	void drawMesh(const Mesh& mesh, Fragment* vertexBuff);
 public:
 	Camera camera;
 	float nearPlane;
@@ -38,7 +38,7 @@ private:
 	SkyBox m_sky;
 	Mesh m_reflectSphere;
 	std::vector<Mesh> m_movingSpheres;
-	DynamicCubeMap* m_envCubeMap;
+	CubeMap* m_envCubeMap;
 	
 	ReflectPixelShader*  m_reflectPS;
 	GenericVertexShader* m_commonVS;

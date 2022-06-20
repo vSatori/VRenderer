@@ -5,49 +5,49 @@
 #include <memory>
 struct Vertex
 {
-	Vector3f pos{0.f, 0.f, 0.f };
-	Vector3f normal{0.f, 0.f, 0.f };
-	Vector2f tex{ 0.f, 0.f };
+	Vector3f pos    { 0.f, 0.f, 0.f };
+	Vector3f normal { 0.f, 0.f, 0.f };
+	Vector2f tex    { 0.f, 0.f };
 };
 
-struct VertexOut
+struct Fragment
 {
-	Vector2f uv;
-	Vector3f posM;
-	Vector3f posW;
-	Vector3f normalW;
-	Vector4f posH;
-	Vector4f posD;
+	Vector2f uv      { 0.f, 0.f };
+	Vector3f posM    { 0.f, 0.f, 0.f };
+	Vector3f posW    { 0.f, 0.f, 0.f };
+	Vector3f normalW { 0.f, 0.f, 0.f };
+	Vector4f posH    { 0.f, 0.f, 0.f, 0.f };
+	Vector4f posD    { 0.f, 0.f, 0.f, 0.f };
 
 	static const int floatSize = 19;
 	
-	VertexOut operator+(const VertexOut& vo)const
+	Fragment operator+(const Fragment& fm)const
 	{
-		VertexOut res = *this;
-		res.uv += vo.uv;
-		res.posM += vo.posM;
-		res.posW += vo.posW;
-		res.posH += vo.posH;
-		res.posD += vo.posD;
-		res.normalW += vo.normalW;
+		Fragment res = *this;
+		res.uv += fm.uv;
+		res.posM += fm.posM;
+		res.posW += fm.posW;
+		res.posH += fm.posH;
+		res.posD += fm.posD;
+		res.normalW += fm.normalW;
 		return res;
 	}
 
-	VertexOut operator-(const VertexOut& vo)const
+	Fragment operator-(const Fragment& fm)const
 	{
-		VertexOut res = *this;
-		res.uv -= vo.uv;
-		res.posM -= vo.posM;
-		res.posW -= vo.posW;
-		res.posH -= vo.posH;
-		res.posD -= vo.posD;
-		res.normalW -= vo.normalW;
+		Fragment res = *this;
+		res.uv -= fm.uv;
+		res.posM -= fm.posM;
+		res.posW -= fm.posW;
+		res.posH -= fm.posH;
+		res.posD -= fm.posD;
+		res.normalW -= fm.normalW;
 		return res;
 	}
 
-	VertexOut operator*(float t)const
+	Fragment operator*(float t)const
 	{
-		VertexOut res = *this;
+		Fragment res = *this;
 		res.uv *= t;
 		res.posM *= t;
 		res.posW *= t;
@@ -58,14 +58,14 @@ struct VertexOut
 	}
 };
 
+
 struct Material
 {
-	Vector3f ambient{1.f, 1.f, 1.f};
-	Vector3f diffuse{1.f, 1.f, 1.f};
-	Vector3f specular{1.f, 1.f, 1.f};
+	Vector3f ambient { 1.f, 1.f, 1.f };
+	Vector3f diffuse { 1.f, 1.f, 1.f };
+	Vector3f specular{ 1.f, 1.f, 1.f };
 	float shininess = 32.f;
 };
-
 
 
 
@@ -81,6 +81,6 @@ struct Mesh
 
 struct SkyBox : public Mesh
 {
-	std::unique_ptr<StaticCubeMap> cubeMap;
+	std::unique_ptr<CubeMap> cubeMap;
 };
 

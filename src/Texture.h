@@ -13,13 +13,11 @@ public:
 	~Texture();
 public:
 	void setRowData(unsigned int* data, int width, int height);
-	Vector3f sample(float u, float v);
-	unsigned int sampleValue(float u, float v);
+	unsigned int sample(float u, float v);
 private:
 	void fillData(unsigned char* data, int comp = 4);
 	void setSize(int width, int height);
 private:
-	std::vector<Vector3f> m_components;
 	unsigned int* m_rowData;
 	int m_width;
 	int m_height;
@@ -38,6 +36,7 @@ public:
 private:
 	void setSize(int w, int h);
 private:
+	
 	float* m_rowData;
 	int m_width;
 	int m_height;
@@ -50,29 +49,13 @@ class CubeMap
 {
 public:
 	CubeMap();
+	CubeMap(const std::vector<std::string>& files);
 	enum class Direction{LEFT,RIGHT,TOP,BOTTOM,FRONT,BACK};
-protected:
-	bool computeDirectionAndUV(const Vector3f& vec, Direction& dir, float& u, float& v);
+public:
+	unsigned int sample(const Vector3f& dir);
+	void setRowData(Direction dir, unsigned int* data, int width, int height);
 protected:
 	std::vector<std::unique_ptr<Texture>> m_textures;
 };
 
 
-class StaticCubeMap : public CubeMap
-{
-public:
-	StaticCubeMap(const std::vector<std::string>& files);
-public:
-	Vector3f sample(const Vector3f& dir);
-	
-};
-
-
-class DynamicCubeMap : public CubeMap
-{
-public:
-	DynamicCubeMap();
-public:
-	void setRowData(Direction dir, unsigned int* data, int width, int height);
-	unsigned int sample(const Vector3f& dir);
-};
