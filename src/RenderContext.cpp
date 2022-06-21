@@ -203,7 +203,7 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 	Vector2f p3{ ((fm3.posH.x + 1.f) * 0.5f * width),  ((1.f - fm3.posH.y) * 0.5f * height) };
 
 	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
-    int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
+	int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
 	int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
 
 	int minx = std::max(findMin(x1, x2, x3), 1);
