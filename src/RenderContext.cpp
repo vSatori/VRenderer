@@ -271,10 +271,10 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 			a /= fm1.posH.w;
 			b /= fm2.posH.w;
 			c /= fm3.posH.w;
-			float hw = 1.f / (a + b + c);
+			float rw = 1.f / (a + b + c);
 			for (int i = 0; i < Fragment::floatSize; ++i)
 			{
-				pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * hw;
+				pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * rw;
 			}
 
 			Vector3f color = ps->execute(frag);
@@ -454,14 +454,14 @@ Fragment RenderContext::clipPlane(const Fragment& fm1, const Fragment& fm2, Side
 	float c2 = v2.dot(side);
 	float weight = c2 / (c2 - c1);
 	*/
-	return fm1 + (fm2 - fm1) * t;
+	return Fragment::lerp(fm1, fm2, t);
 }
 
 Fragment RenderContext::clipWPlane(const Fragment& fm1, const Fragment& fm2)
 {
 	float w = clipW > nearPlane ? clipW : nearPlane;
 	float t = (fm1.posH.w - w) / (fm1.posH.w - fm2.posH.w);
-    return fm1 + (fm2 - fm1) * t;
+	return Fragment::lerp(fm1, fm2, t);
 }
 
 bool RenderContext::inside(const Vector4f& pos, Side side)

@@ -429,7 +429,7 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) :
 		Vertex& vertex = vertices[i];
 		memcpy(&vertex.pos, pv.positon, sizeof(float) * 3);
 		memcpy(&vertex.normal, pv.normal, sizeof(float) * 3);
-		memcpy(&vertex.tex, pv.uv, sizeof(float) * 2);
+		memcpy(&vertex.uv, pv.uv, sizeof(float) * 2);
 	}
 	std::vector<Vector3i> indices;
 	indices.resize(model.index_count / 3);
