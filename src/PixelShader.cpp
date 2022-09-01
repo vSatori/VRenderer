@@ -1,12 +1,19 @@
 #include "PixelShader.h"
 #include "RenderContext.h"
+static float offset = 1.f / 1000.f;
+static Vector2f shaowSamplePts[]{ {-offset, -offset}, {-offset, offset}, {offset, -offset}, {offset, offset},{0.f, 0.f},{0.f, -offset}, { 0.f, offset}, {offset, 0.f}, {-offset, 0.f} };
 
 static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 {
 	float x = (pos.x + 1.f) * 0.5f;
 	float y = (1.f - pos.y) * 0.5f;
-	float depth = tex->sample(x,y);
-	return pos.z - 0.05f < depth ? 1.f : 0.f;
+	float shadowFactor = 0.f;
+	for (int i = 0; i < 9; ++i)
+	{
+		float depth = tex->sample(x + shaowSamplePts[i].x, y + shaowSamplePts[i].y, RenderContext::currentSampleIndex);
+		shadowFactor += pos.z - 0.05f < depth ? 1.f : 0.f;
+	}
+	return shadowFactor / 9.f;
 }
 
 Vector3f GenericPixelShader::execute(const Fragment& fm)

@@ -91,12 +91,12 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 	MeshFactory::createCube(m_sky, 1.f, 1.f, 1.f);
 	MeshFactory::flipMesh(m_sky);
 	std::vector<std::string> files;
-	files.push_back("../../resources/skybox/lake/left.jpg");
-	files.push_back("../../resources/skybox/lake/right.jpg");
-	files.push_back("../../resources/skybox/lake/top.jpg");
-	files.push_back("../../resources/skybox/lake/bottom.jpg");
-	files.push_back("../../resources/skybox/lake/back.jpg");
-	files.push_back("../../resources/skybox/lake/front.jpg");
+	files.push_back("../resources/skybox/lake/left.jpg");
+	files.push_back("../resources/skybox/lake/right.jpg");
+	files.push_back("../resources/skybox/lake/top.jpg");
+	files.push_back("../resources/skybox/lake/bottom.jpg");
+	files.push_back("../resources/skybox/lake/back.jpg");
+	files.push_back("../resources/skybox/lake/front.jpg");
 	m_sky.cubeMap = std::make_unique<CubeMap>(files);
 
 	std::vector<Vector3f> colors;
@@ -223,6 +223,7 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	m_skyVS->view = camera.matrix;
 	m_skyVS->projection = projection;
 	drawMesh(m_sky);
+	RenderContext::resolve();
 }
 
 ShadowMappingScene::ShadowMappingScene() : 
@@ -307,13 +308,15 @@ void ShadowMappingScene::render()
 
 	RenderContext::drawColor = false;
 	renderShadow();
-	m_depthTexture->setRowData(RenderContext::zbuffer, RenderContext::width, RenderContext::height);
+	m_depthTexture->setRowData(RenderContext::zbuffers, RenderContext::width, RenderContext::height, RenderContext::sampleCount);
 	RenderContext::drawColor = true;
 
 	camera = cameraCache;
 	fov = fovCache;
 
 	renderScene();
+
+	RenderContext::resolve();
 }
 
 void ShadowMappingScene::renderShadow()
@@ -559,6 +562,7 @@ void PmxModelScene::render()
 	}
 	if (onlyDrawPmxModel)
 	{
+		RenderContext::resolve();
 		return;
 	}
 	m_VS->world = Transform::translate(0.f, 20.f, 0.f);
@@ -572,6 +576,7 @@ void PmxModelScene::render()
 	m_PS->material = m_lightBox.material;
 	m_PS->light = nullptr;
 	drawMesh(m_lightBox);
+	RenderContext::resolve();
 }
 
 
@@ -638,6 +643,8 @@ void OceanWaveScene::render()
 	m_VS->vp = m_VS->projection * m_VS->view;
 
 	drawMesh(m_wave->wave);
+
+	RenderContext::resolve();
 }
 
 void OceanWaveScene::generateWave()

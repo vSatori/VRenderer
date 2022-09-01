@@ -31,13 +31,14 @@ public:
 	DepthTexture();
 	~DepthTexture();
 public:
-	void setRowData(float* data, int width, int height);
-	float sample(float u, float v);
+	void setRowData(float* data, int width, int height, int levels);
+	float sample(float u, float v, int level = 0);
 private:
 	void setSize(int w, int h);
 private:
 	
 	float* m_rowData;
+	int m_levels;
 	int m_width;
 	int m_height;
 	int m_maxWidthIndex;

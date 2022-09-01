@@ -12,7 +12,7 @@ enum class CullMode
 
 enum class FillMode
 {
-	SOLID,WIREFRAME,SOLIDWITHWIREFRAME,NONE
+	SOLID,WIREFRAME,NONE
 };
 
 enum class DepthMode
@@ -23,6 +23,11 @@ enum class DepthMode
 enum class BlendMode
 {
 
+};
+
+enum class MSAALevel
+{
+	MSAA0X,MSAA2X,MSAA4X,MSAA8X
 };
 
 enum class Side
@@ -40,19 +45,23 @@ public:
 	static bool alphaBlending;
 	static bool drawColor;
 	static bool clockwise;
-	static Vector3f* pixels;
 	static unsigned int* renderTarget;
-	static float* zbuffer;
 	static bool* pixelMask;
-	static const int width = 800;
-	static const int height = 600;
+	static float* zbuffers;
+	static Vector3f* pixelColors;
 	static Vector3f eyePos;
 	static float nearPlane;
 	static float farPlane;
 	static VertexShader* vs;
 	static PixelShader* ps;
-	static const float clipW;
 	static unsigned int currentPixelIndex;
+	static unsigned int currentSampleIndex;
+	static int sampleCount;
+	static const float clipW;
+	static const int width = 800;
+	static const int height = 600;
+	static const MSAALevel msaaLevel = MSAALevel::MSAA0X;
+	
 public:
 	static void init();
 	static void finalize();
@@ -62,18 +71,14 @@ public:
 	static void draw(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
 	static bool clippingTest(const Vector4f& v1, const Vector4f& v2, const Vector4f& v3);
 	static void drawFragment(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
-	static void resolve();
 	static void drawLine(int x1, int y1, int x2, int y2);
+	static void resolve();
+	
 	
 	static std::vector<Fragment> polygonClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
 	static Fragment clipPlane(const Fragment& fm1, const Fragment& fm2, Side side);
 	static Fragment clipWPlane(const Fragment& fm1, const Fragment& fm2);
 	static bool inside(const Vector4f& pos, Side side);
-	/*
-	static void drawFragmentByScanLine(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);
-	static void drawTopTriangle(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);
-	static void drawBottomTriangle(VertexOut& vo1, VertexOut& vo2, VertexOut& vo3);
-	*/
 };
 
 

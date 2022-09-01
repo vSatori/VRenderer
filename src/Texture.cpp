@@ -99,24 +99,25 @@ DepthTexture::~DepthTexture()
 		delete[] m_rowData;
 	}
 }
-
-void DepthTexture::setRowData(float* data, int width, int height)
+#include "RenderContext.h"
+void DepthTexture::setRowData(float* data, int width, int height, int levels)
 {
 	if (m_rowData)
 	{
 		delete[] m_rowData;
 	}
 	setSize(width, height);
-	int size = m_width * m_height;
+	m_levels = levels;
+	int size = m_width * m_height * levels;
 	m_rowData = new float[size];
 	memcpy(m_rowData, data, size * sizeof(float));
 }
 
-float DepthTexture::sample(float u, float v)
+float DepthTexture::sample(float u, float v, int level)
 {
 	int x = static_cast<int>(u * m_maxWidthIndex  + 0.5f);
 	int y = static_cast<int>(v * m_maxHeightIndex + 0.5f);
-	return m_rowData[y * m_width + x];
+	return m_rowData[(y * m_width + x) * m_levels + level];
 }
 
 void DepthTexture::setSize(int w, int h)

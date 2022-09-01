@@ -1,6 +1,5 @@
 #pragma once
 #include "Mesh.h"
-#include <QtCore/qdebug.h>
 class MeshFactory
 {
 public:

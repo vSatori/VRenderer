@@ -33,7 +33,7 @@ public:
 		return x * vec.x + y * vec.y;
 	}
 
-	inline T corss(const Vector2<T>& vec)const
+	inline T cross(const Vector2<T>& vec)const
 	{
 		return x * vec.y - y * vec.x;
 	}

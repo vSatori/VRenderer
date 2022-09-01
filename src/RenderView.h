@@ -1,30 +1,33 @@
 #pragma once
-
-#include <QtWidgets/qwidget.h>
+#include <Windows.h>
 class Scene;
 
-
-
-class RenderView : public QWidget
+#define renderer RenderView::instance()
+class RenderView
 {
 public:
-	RenderView(QWidget *parent = Q_NULLPTR);
+	static RenderView* instance()
+	{
+		static RenderView view;
+		return &view;
+	}
+private:
+	RenderView();
 	~RenderView();
 public:
-	void renderScene();
 	void setScene(Scene* scene);
-protected:
-	virtual void paintEvent(QPaintEvent* e)override;
-	virtual void mousePressEvent(QMouseEvent* e)override;
-	virtual void mouseMoveEvent(QMouseEvent* e)override;
-	virtual void mouseReleaseEvent(QMouseEvent* e)override;
-	virtual void wheelEvent(QWheelEvent *e)override;
-	virtual void closeEvent(QCloseEvent* e)override;
-public:
-	unsigned int fps;
+	bool init(HINSTANCE ins);
+	int run();
+	void renderScene();
+	LRESULT ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 private:
-	Scene* m_currentScene;
-	bool m_interact;
-	int m_lastX;
-	int m_lastY;
+	Scene* m_currentScene{nullptr};
+	bool m_interact{false};
+	int m_lastX{0};
+	int m_lastY{0};
+	HWND m_wnd{nullptr};
+	HDC m_wndc{nullptr};
+	HDC m_fdc{nullptr};
+	HBITMAP m_bitmap{nullptr};
+	unsigned char* m_frameBuffer{nullptr};
 };

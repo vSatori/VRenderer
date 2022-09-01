@@ -1,27 +1,118 @@
 #include "RenderView.h"
-#include <QtGui/qpainter.h>
-#include <QtGui/qevent.h>
 #include "Scene.h"
 #include "RenderContext.h"
 
-extern bool exitApp;
 
-RenderView::RenderView(QWidget *parent)
-	: QWidget(parent), 
-	m_currentScene(nullptr), 
-	m_interact(false), 
-	m_lastX(0.f), 
-	m_lastY(0.f),
-	fps(0)
+LRESULT MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	RenderContext::init();
-	setFixedSize(RenderContext::width, RenderContext::height);
-	
+	return renderer->ProcessMessage(hwnd, msg, wParam, lParam);
+}
+
+
+RenderView::RenderView()
+{
+
 }
 
 RenderView::~RenderView()
 {
-	RenderContext::finalize();
+	ReleaseDC(m_wnd, m_fdc);
+	DeleteObject(m_bitmap);
+	DeleteDC(m_fdc);
+}
+void RenderView::setScene(Scene* scene)
+{
+	m_currentScene = scene;
+	RenderContext::nearPlane = scene->nearPlane;
+	RenderContext::farPlane = scene->farPlane;
+}
+
+bool RenderView::init(HINSTANCE ins)
+{
+	WNDCLASS wc;
+	wc.style = CS_HREDRAW | CS_VREDRAW;
+	wc.lpfnWndProc = MainWndProc;
+	wc.cbClsExtra = 0;
+	wc.cbWndExtra = 0;
+	wc.hInstance = ins;
+	wc.hIcon = LoadIcon(0, IDI_APPLICATION);
+	wc.hCursor = LoadCursor(0, IDC_ARROW);
+	wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
+	wc.lpszMenuName = 0;
+	wc.lpszClassName = "VRenderWindow";
+
+	if (!RegisterClass(&wc))
+	{
+		return false;
+	};
+
+	RECT R = { 0, 0, RenderContext::width, RenderContext::height };
+	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
+	int width = R.right - R.left;
+	int height = R.bottom - R.top;
+
+	m_wnd = CreateWindow("VRenderWindow", "VRenderer",
+		WS_OVERLAPPEDWINDOW ^ WS_MAXIMIZEBOX ^ WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, ins, 0);
+	if (!m_wnd)
+	{
+		return false;
+	}
+	ShowWindow(m_wnd, SW_SHOW);
+	UpdateWindow(m_wnd);
+
+	m_wndc = GetDC(m_wnd);
+	m_fdc = CreateCompatibleDC(m_wndc);
+	if (!m_fdc)
+	{
+		return false;
+	}
+
+	BITMAPINFO info = { { sizeof(BITMAPINFOHEADER), RenderContext::width, -RenderContext::height, 1, 32, BI_RGB,
+		RenderContext::width * RenderContext::height * 4, 0, 0, 0, 0 } };
+	LPVOID ptr;
+	m_bitmap = CreateDIBSection(m_fdc, &info, DIB_RGB_COLORS, &ptr, 0, 0);
+	if (!m_bitmap)
+	{
+		return false;
+	}
+	SelectObject(m_fdc, m_bitmap);
+	m_frameBuffer = (unsigned char*)ptr;
+	return true;
+}
+
+
+int RenderView::run()
+{
+	MSG msg = { 0 };
+	unsigned int dfps = 0;
+	unsigned int fps = 0;
+	unsigned long long diff = 0;
+	while (msg.message != WM_QUIT)
+	{
+		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		else
+		{
+			if (diff >= 1000)
+			{
+				diff = 0;
+				fps = dfps;
+				dfps = 0;
+			}
+			auto s = GetTickCount64();
+			renderScene();
+			std::string txt = "fps: ";
+			txt	+= std::to_string(fps);
+			TextOut(m_wndc, 30, 30, txt.c_str(), txt.size());
+			diff += GetTickCount64() - s;
+			++dfps;
+		}
+	}
+
+	return (int)msg.wParam;
 }
 
 void RenderView::renderScene()
@@ -31,95 +122,94 @@ void RenderView::renderScene()
 		return;
 	}
 	m_currentScene->render();
-	update();
+	memcpy(m_frameBuffer, RenderContext::renderTarget, RenderContext::width * RenderContext::height * 4);
+	HDC dc = GetDC(m_wnd);
+	BitBlt(dc, 0, 0, RenderContext::width, RenderContext::height, m_fdc, 0, 0, SRCCOPY);
+	ReleaseDC(m_wnd, dc);
 }
 
-void RenderView::setScene(Scene * scene)
+LRESULT RenderView::ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	m_currentScene = scene;
-	RenderContext::nearPlane = scene->nearPlane;
-	RenderContext::farPlane = scene->farPlane;
-}
-
-void RenderView::paintEvent(QPaintEvent * e)
-{
-	QPainter p(this);
-	QImage image((uchar*)RenderContext::renderTarget, RenderContext::width, RenderContext::height, QImage::Format_RGB32);
-	QPen pen;
-	pen.setColor(Qt::red);
-	p.setPen(pen);
-	p.drawImage(0, 0, image);
-	p.drawText(30, 30, QString("fps:%1").arg(fps));
-}
-
-void RenderView::mousePressEvent(QMouseEvent * e)
-{
-	m_lastX = e->pos().x();
-	m_lastY = e->pos().y();
-	m_interact = true;
-}
-
-void RenderView::mouseMoveEvent(QMouseEvent * e)
-{
-	if (!m_interact)
+	switch (msg)
 	{
-		return;
-	}
-	if (!m_currentScene || !m_currentScene->camera.useSphereMode)
+	case WM_DESTROY:
 	{
-		return;
+		PostQuitMessage(0);
+		return 0;
 	}
-	Camera& camera = m_currentScene->camera;
-	int x = e->pos().x();
-	int y = e->pos().y();
-	float dx = (0.25f * (x - m_lastX));
-	float dy = (0.25f * (y - m_lastY));
+	case WM_MENUCHAR:
+	{
+		return MAKELRESULT(0, MNC_CLOSE);
+	}
+	case WM_LBUTTONDOWN:
+	{
+		m_lastX = LOWORD(lParam);
+		m_lastY = HIWORD(lParam);
+		m_interact = true;
+		return 0;
+	}
+	case WM_LBUTTONUP:
+	{
+		m_interact = false;
+		return 0;
+	}
+	case WM_MOUSEMOVE:
+	{
+		if (!m_interact)
+		{
+			return 0;
+		}
+		if (!m_currentScene || !m_currentScene->camera.useSphereMode)
+		{
+			return 0;
+		}
+		Camera& camera = m_currentScene->camera;
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		float dx = (0.25f * (x - m_lastX));
+		float dy = (0.25f * (y - m_lastY));
 
-	camera.yaw -= dx;
-    camera.pitch += dy;
-	if (camera.pitch > 89.f)
-	{
-		camera.pitch = 89.f;
+		camera.yaw -= dx;
+		camera.pitch += dy;
+		if (camera.pitch > 89.f)
+		{
+			camera.pitch = 89.f;
+		}
+		if (camera.pitch < -89.f)
+		{
+			camera.pitch = -89.f;
+		}
+		m_lastX = x;
+		m_lastY = y;
+		return 0;
 	}
-	if (camera.pitch < -89.f)
+	case WM_MOUSEWHEEL:
 	{
-		camera.pitch = -89.f;
-	}
-	m_lastX = x;
-	m_lastY = y;
-}
+		if (!m_currentScene)
+		{
+			return 0;
+		}
+		float& fov = m_currentScene->fov;
+		if (fov >= 1.0f && fov <= 90.0f)
+		{
+			fov -= (float)GET_WHEEL_DELTA_WPARAM(wParam) * 0.05f;
+			return 0;
+		}
 
-void RenderView::mouseReleaseEvent(QMouseEvent * e)
-{
-	m_interact = false;
-}
+		if (fov <= 1.0f)
+		{
+			fov = 1.0f;
+		}
 
-void RenderView::wheelEvent(QWheelEvent * event)
-{
-	if (!m_currentScene)
-	{
-		return;
+		else if (fov >= 90.0f)
+		{
+			fov = 90.0f;
+		}
+		return 0;
 	}
-	float& fov = m_currentScene->fov;
-	if (fov >= 1.0f && fov <= 90.0f)
-	{
-		fov -= event->delta() * 0.1;
-		return;
+	default:
+		break;
 	}
 
-	if (fov <= 1.0f)
-	{
-		fov = 1.0f;
-	}
-
-	else if (fov >= 90.0f)
-	{
-		fov = 90.0f;
-	}
-}
-
-void RenderView::closeEvent(QCloseEvent* event)
-{
-	exitApp = true;
-	QWidget::closeEvent(event);
+	return DefWindowProc(hwnd, msg, wParam, lParam);
 }

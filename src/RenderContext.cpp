@@ -7,8 +7,15 @@ omp_init_lock(&lock);
 #endif // _omp
 */
 
-static unsigned int whiteValue = (255 << 16) + (255 << 8) + 255;
-static unsigned int redValue = (255 << 16);
+static Vector2f g_samples0X[]{ {0.f, 0.f} };
+static Vector2f g_samples2X[]{ {-0.25f, -0.25f},{0.25f, 0.25f} };
+static Vector2f g_samples4X[]{ {-0.125f, -0.375f}, {0.375f, -0.125f}, {-0.375f, 0.125f}, {0.125f, 0.375f} };
+static Vector2f g_samples8X[]{ {-0.375f, -0.375f}, {0.125f, 0.375f}, {-0.125f, 0.125f}, {0.375f, 0.125f},
+							   {-0.375f, -0.125f}, {0.125f, -0.125f},{0.125f, -0.375f}, {0.375f, -0.375f} };
+static Vector2f* g_currentSamples = g_samples4X;
+
+static unsigned int g_whiteValue = (255 << 16) + (255 << 8) + 255;
+static unsigned int g_redValue = (255 << 16);
 
 const float RenderContext::clipW = 0.00001f;
 CullMode RenderContext::cullMode = CullMode::CULLBACKFACE;
@@ -17,22 +24,59 @@ DepthMode RenderContext::depthMode = DepthMode::LESS;
 bool RenderContext::alphaBlending = false;
 bool RenderContext::drawColor = true;
 bool RenderContext::clockwise = true;
-Vector3f* RenderContext::pixels = nullptr;
 unsigned int* RenderContext::renderTarget = nullptr;
-float* RenderContext::zbuffer = nullptr;
 bool* RenderContext::pixelMask = nullptr;
+float* RenderContext::zbuffers = nullptr;
+Vector3f* RenderContext::pixelColors = nullptr;
+
 Vector3f RenderContext::eyePos = { 0.f, 0.f, 0.f };
 float RenderContext::nearPlane = 0.f;
 float RenderContext::farPlane = 100.f;
 VertexShader* RenderContext::vs = nullptr;
 PixelShader* RenderContext::ps = nullptr;
 unsigned int RenderContext::currentPixelIndex = 0;
+unsigned int RenderContext::currentSampleIndex = 0;
+int RenderContext::sampleCount = 4;
+
 
 
 void RenderContext::init()
 {
+	switch (RenderContext::msaaLevel)
+	{
+	case MSAALevel::MSAA0X:
+	{
+		RenderContext::sampleCount = 1;
+		g_currentSamples = g_samples0X;
+		break;
+	}
+	case MSAALevel::MSAA2X:
+	{
+		RenderContext::sampleCount = 2;
+		g_currentSamples = g_samples2X;
+		break;
+	}
+	case MSAALevel::MSAA4X:
+	{
+		RenderContext::sampleCount = 4;
+		g_currentSamples = g_samples4X;
+		break;
+	}
+	case MSAALevel::MSAA8X:
+	{
+		RenderContext::sampleCount = 8;
+		g_currentSamples = g_samples8X;
+		break;
+	}
+	default:
+		break;
+	}
+
 	renderTarget = new unsigned int[width * height];
-	zbuffer = new float[width * height];
+	zbuffers = new float[width * height * sampleCount];
+	pixelColors = new Vector3f[width * height * sampleCount];
+	pixelMask = new bool[width * height];
+	
 }
 
 void RenderContext::finalize()
@@ -41,9 +85,17 @@ void RenderContext::finalize()
 	{
 		delete renderTarget;
 	}
-	if (zbuffer)
+	if (pixelColors)
 	{
-		delete zbuffer;
+		delete pixelColors;
+	}
+	if (zbuffers)
+	{
+		delete zbuffers;
+	}
+	if (pixelMask)
+	{
+		delete pixelMask;
 	}
 }
 
@@ -53,9 +105,22 @@ void RenderContext::clear()
 	
 	for (int i = 0; i < count; ++i)
 	{
-		renderTarget[i] = whiteValue;
-		zbuffer[i] = 1.f;
+		renderTarget[i] = g_whiteValue;
 	}
+	
+	memset(pixelMask, 0, sizeof(bool) * count);
+	count *= sampleCount;
+	for (int i = 0; i < count; ++i)
+	{
+		zbuffers[i] = 1.f;
+	}
+	int floatSize = count * 3;
+	float* p = (float*)&pixelColors[0];
+	for (int i = 0; i < floatSize; ++i)
+	{
+		p[i] = 1.f;
+	}
+
 }
 
 bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
@@ -103,15 +168,15 @@ bool RenderContext::depthTest(float z, int index)
 		}
 		case DepthMode::LESS:
 		{
-			return z < zbuffer[index];
+			return z < zbuffers[index];
 		}
 		case DepthMode::EQUAL:
 		{
-			return z == zbuffer[index];
+			return z == zbuffers[index];
 		}
 		case DepthMode::LESSEQUAL:
 		{
-			return z <= zbuffer[index];
+			return z <= zbuffers[index];
 		}
 		case DepthMode::ALWAYS:
 		{
@@ -218,101 +283,108 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 	const float* pfm2 = (const float*)&fm2;
 	const float* pfm3 = (const float*)&fm3;
 
-	//Vector2f samples[4] = { {-0.125f, -0.375f}, {0.375f, -0.125f}, {-0.375f, 0.125f}, {0.125f, 0.375f} };
+
 	for (int y = miny; y <= maxy; ++y)
 	{
 		for (int x = minx; x <= maxx; ++x)
 		{
-			Vector2f p{ static_cast<float>(x), static_cast<float>(y) };
-			float areaA = ((p - p2).corss(p3 - p2));
-			float areaB = ((p - p3).corss(p1 - p3));
-			float areaC = ((p - p1).corss(p2 - p1));
-
-			if (clockwise)
+			bool isDone = false;
+			Vector3f sampleColor;
+			for (int index = 0; index < sampleCount; ++index)
 			{
-				bool okA = areaA < 0.00001f;
-				bool okB = areaB < 0.00001f;
-				bool okC = areaC < 0.00001f;
+				Vector2f p{ static_cast<float>(x), static_cast<float>(y) };
+				p += g_currentSamples[index];
 
-				if (!(okA && okB && okC))
+				float areaA = ((p - p2).cross(p3 - p2));
+				float areaB = ((p - p3).cross(p1 - p3));
+				float areaC = ((p - p1).cross(p2 - p1));
+
+				if (clockwise)
+				{
+					bool okA = areaA < 0.000001f;
+					bool okB = areaB < 0.000001f;
+					bool okC = areaC < 0.000001f;
+
+					if (!(okA && okB && okC))
+					{
+						continue;
+					}
+				}
+				else
+				{
+					bool okD = areaA > -0.000001f;
+					bool okE = areaB > -0.000001f;
+					bool okF = areaC > -0.000001f;
+
+					if (!(okD && okE && okF))
+					{
+						continue;
+					}
+				}
+				float area = areaA + areaB + areaC;
+				float a = areaA / area;
+				float b = areaB / area;
+				float c = areaC / area;
+
+				float z = (fm1.posH.z * a + fm2.posH.z * b + fm3.posH.z * c);
+				currentPixelIndex = (width * y + x) * sampleCount + index;
+				if (!depthTest(z, currentPixelIndex))
 				{
 					continue;
 				}
-			}
-			else
-			{
-				bool okD = areaA > -0.00001f;
-				bool okE = areaB > -0.00001f;
-				bool okF = areaC > -0.00001f;
+				zbuffers[currentPixelIndex] = z;
 
-				if (!(okD && okE && okF))
+				if (!drawColor)
 				{
 					continue;
 				}
-			}
-			float area = areaA + areaB + areaC;
-			float a = areaA / area;
-			float b = areaB / area;
-			float c = areaC / area;
-
-			float z = (fm1.posH.z * a + fm2.posH.z * b + fm3.posH.z * c);
-			currentPixelIndex = width * y + x;
-			if (!depthTest(z, currentPixelIndex))
-			{
-				continue;
-			}
-			zbuffer[currentPixelIndex] = z;
-			
-			if (!drawColor)
-			{
-				continue;
-			}
-
-			a /= fm1.posH.w;
-			b /= fm2.posH.w;
-			c /= fm3.posH.w;
-			float rw = 1.f / (a + b + c);
-			for (int i = 0; i < Fragment::floatSize; ++i)
-			{
-				pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * rw;
-			}
-
-			Vector3f color = ps->execute(frag);
-			float* pc = (float*)&color;
-			for (int i = 0; i < 3; ++i)
-			{
-				if (pc[i] > 1.f)
+				if (!isDone)
 				{
-					pc[i] = 1.f;
+					currentSampleIndex = index;
+					a /= fm1.posH.w;
+					b /= fm2.posH.w;
+					c /= fm3.posH.w;
+					float rw = 1.f / (a + b + c);
+					
+					for (int i = 0; i < Fragment::floatSize; ++i)
+					{
+						pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * rw;
+					}
+					sampleColor = ps->execute(frag);
+					
+					float* pc = (float*)&sampleColor;
+					for (int i = 0; i < 3; ++i)
+					{
+						if (pc[i] > 1.f)
+						{
+							pc[i] = 1.f;
+						}
+					}
+					isDone = true;
 				}
+
+				pixelMask[currentPixelIndex / sampleCount] = true;
+				pixelColors[currentPixelIndex] = sampleColor;
 			}
-		
-			renderTarget[currentPixelIndex] = colorValue(color);
-			
 		}
 	}
 }
 void RenderContext::resolve()
 {
-	for (int y = 0; y < height; ++y)
+	float weight = 1.f / sampleCount;
+	int num = width * height * sampleCount;
+	for (int i = 0; i < num; i += sampleCount)
 	{
-		for (int x = 0; x < width; ++x)
+		if (!pixelMask[i / sampleCount])
 		{
-			int index = y * width + x;
-			int count = 0;
-			float coef = 0.f;
-			for (int i = 0; i < 4; ++i)
-			{
-				if (pixelMask[index * 4 + i])
-				{
-					coef += 1.f;
-				}
-			}
-			coef /= 4.f;
-			Vector3f& color = pixels[index];
-			color *= coef;
-			renderTarget[index] = colorValue(color);
+			continue;
 		}
+		Vector3f color;
+		for (int j = 0; j < sampleCount; ++j)
+		{
+			color += pixelColors[i + j] * weight;
+		}
+		renderTarget[i / sampleCount] = colorValue(color);
 	}
 }
 void RenderContext::drawLine(int x1, int y1, int x2, int y2)
@@ -341,11 +413,11 @@ void RenderContext::drawLine(int x1, int y1, int x2, int y2)
 	{
 		if (steep)
 		{
-			renderTarget[y + width * x] = redValue;
+			renderTarget[y + width * x] = g_redValue;
 		}
 		else
 		{
-			renderTarget[x + width * y] = redValue;
+			renderTarget[x + width * y] = g_redValue;
 		}
 		error2 += derror2;
 		if (error2 > dx)
@@ -508,233 +580,3 @@ bool RenderContext::inside(const Vector4f& pos, Side side)
 	}
 	return in;
 }
-/*
-static void lerp(Fragment& vo, const Fragment& vo1, const Fragment& vo2, float t)
-{
-	float* pv = (float*)(&vo);
-	const float* pv1 = (const float*)(&vo1);
-	const float* pv2 = (const float*)(&vo2);
-	for (int i = 0; i < Fragment::floatSize; ++i)
-	{
-		pv[i] = pv1[i] + (pv2[i] - pv1[i]) * t;
-	}
-}
-
-static void lerp(VertexOut& vo, const VertexOut& vo1, const VertexOut& vo2, float t)
-{
-	float* pv = (float*)(&vo1);
-	const float* pv1 = (const float*)(&vo1);
-	const float* pv2 = (const float*)(&vo2);
-	float z1 = vo1.posH.w;
-	float z2 = vo2.posH.w;
-	for (int i = 0; i < 19; ++i)
-	{
-		pv[i] = pv1[i] / z1 + (pv2[i] / z2 - pv1[i] / z1) * t;
-
-	}
-	float z = vo.posH.w;
-	for (int i = 0; i < 19; ++i)
-	{
-		pv[i] *= z;
-	}
-}
-*/
-
-/*
-void RenderContext::drawFragmentByScanLine(VertexOut & vo1, VertexOut & vo2, VertexOut & vo3)
-{
-	if (vo1.posH.y == vo2.posH.y)
-	{
-		if (vo1.posH.y > vo3.posH.y)
-		{
-			drawTopTriangle(vo1, vo2, vo3);
-			return;
-		}
-		drawBottomTriangle(vo3, vo1, vo2);
-		return;
-		
-	}
-	if (vo1.posH.y == vo3.posH.y)
-	{
-		if (vo1.posH.y > vo2.posH.y)
-		{
-			drawTopTriangle(vo1, vo3, vo2);
-			return;
-		}
-		drawBottomTriangle(vo2, vo1, vo3);
-		return;
-
-	}
-	if (vo2.posH.y == vo3.posH.y)
-	{
-		if (vo2.posH.y > vo1.posH.y)
-		{
-			drawTopTriangle(vo2, vo3, vo1);
-			return;
-		}
-		
-		drawBottomTriangle(vo1, vo2, vo3);
-		return;
-	}
-	std::vector<VertexOut> temp{ vo1, vo2, vo3 };
-	std::sort(temp.begin(), temp.end(), [](const VertexOut& v1, const VertexOut& v2)
-	{
-		return v1.posH.y > v2.posH.y;
-	});
-
-	VertexOut v1 = temp[0];
-	VertexOut v2= temp[1];
-	VertexOut v3= temp[2];
-
-	//sort(vo1, vo2, vo3);
-	VertexOut v4;
-	float t = (v2.posH.y - v1.posH.y) / (v3.posH.y - v1.posH.y);
-	lerp(v4, v1, v3, t);
-	drawBottomTriangle(v1, v2, v4);
-	drawTopTriangle(v2, v4, v3);
-}
-
-
-void RenderContext::drawTopTriangle(VertexOut & vo1, VertexOut & vo2, VertexOut & vo3)
-{
-	if (vo1.posH.x > vo2.posH.x)
-	{
-		std::swap(vo1, vo2);
-	}
-
-	Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  ((1.f - vo1.posH.y) * 0.5f * height) };
-	Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  ((1.f - vo2.posH.y) * 0.5f * height) };
-	Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
-
-	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
-	int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
-	int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
-
-	int dy1 = y3 - y1;
-	int dy2 = y3 - y2;
-	VertexOut start;
-	VertexOut end;
-	VertexOut vout;
-	float z1, z2, z3;
-	float zStart, zEnd;
-	for (int y = y1; y < y3; ++y)
-	{
-		z1 = vo1.posH.z;
-		z2 = vo2.posH.z;
-		z3 = vo3.posH.z;
-		int t1 = 0;
-		int t2 = 0;
-		if (dy1 != 0)
-		{
-			t1 = (float)(y - y1) / (float)dy1;
-			
-		};
-		if (dy2 != 0)
-		{
-			t2 = (float)(y - y2) / (float)dy2;
-		}
-		lerp(start, vo1, vo3, t1);
-		lerp(end, vo2, vo3, t2);
-		int xStart = x1 + (x3 - x1) * t1;
-		int xEnd = x2 + (x3 - x2) * t2;
-		zStart = z1 + (z3 - z1) * t1;
-		zEnd = z2 + (z3 - z2) * t2;
-		int diffx = xEnd - xStart;
-		for (int x = xStart; x < xEnd; ++x)
-		{
-			currentPixelIndex = y * width + x;
-			float t = 0;
-			if (diffx != 0)
-			{
-				t = (float)(x - xStart) / (float)diffx;
-			}
-			float z = zStart + (zEnd - zStart) * t;
-			if (zbuffer[currentPixelIndex] < z)
-			{
-				continue;
-			}
-			zbuffer[currentPixelIndex] = z;
-			lerp(vout, start, end, t);
-			Vector3f color = ps->execute(vout);
-			int red = color.x * 255;
-			int green = color.y * 255;
-			int blue = color.z * 255;
-			unsigned int colorValue = (red << 16) + (green << 8) + blue;
-			renderTarget[currentPixelIndex] = colorValue;
-		}
-
-	}
-
-
-}
-
-void RenderContext::drawBottomTriangle(VertexOut & vo1, VertexOut & vo2, VertexOut & vo3)
-{
-	if (vo2.posH.x > vo3.posH.x)
-	{
-		std::swap(vo2, vo3);
-	}
-
-	Vector2f p1{ ((vo1.posH.x + 1.f) * 0.5f * width),  ((1.f - vo1.posH.y) * 0.5f * height) };
-	Vector2f p2{ ((vo2.posH.x + 1.f) * 0.5f * width),  ((1.f - vo2.posH.y) * 0.5f * height) };
-	Vector2f p3{ ((vo3.posH.x + 1.f) * 0.5f * width),  ((1.f - vo3.posH.y) * 0.5f * height) };
-
-	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
-	int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
-	int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
-	
-	int dy1 = y2 - y1;
-	int dy2 = y3 - y1;
-	VertexOut start;
-	VertexOut end;
-	VertexOut vout;
-	float z1, z2, z3;
-	float zStart, zEnd;
-	for (int y = y1; y < y3; ++y)
-	{
-		z1 = vo1.posH.z;
-		z2 = vo2.posH.z;
-		z3 = vo3.posH.z;
-		float t1 = 0;
-		float t2 = 0;
-		if (dy1 != 0)
-		{
-			t1 = (float)(y - y1) / (float)dy1;
-		}
-		if (dy2 != 0)
-		{
-			t2 = (float)(y - y1) / (float)dy2;
-		}
-		lerp(start, vo1, vo2, t1);
-		lerp(end, vo1, vo3, t2);
-		int xStart = x1 + (x2 - x1) * t1;
-		int xEnd = x1 + (x3 - x1) * t2;
-		zStart = z1 + (z2 - z1) * t1;
-		zEnd = z1 + (z3 - z1) * t2;
-		int diffx = xEnd - xStart;
-		for (int x = xStart; x < xEnd; ++x)
-		{
-			currentPixelIndex = y * width + x;
-			
-			float t = 0;
-			if (diffx != 0)
-			{
-				t = (float)(x - xStart) / (float)diffx;
-			}
-			float z = zStart + (zEnd - zStart) * t;
-			if (zbuffer[currentPixelIndex] < z)
-			{
-				continue;
-			}
-			zbuffer[currentPixelIndex] = z;
-			lerp(vout, start, end, t);
-			Vector3f color = ps->execute(vout);
-			int red = color.x * 255;
-			int green = color.y * 255;
-			int blue = color.z * 255;
-			unsigned int colorValue = (red << 16) + (green << 8) + blue;
-		}
-
-	}
-}
-*/
