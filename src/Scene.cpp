@@ -477,6 +477,7 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) :
 	m_bigBox.material.shininess = 32.f;
 
 	MeshFactory::createCube(m_lightBox, 0.2f, 0.2f, 0.2f);
+	MeshFactory::createSphere(m_transparentSphere, 2.f, 30, 30);
 
 	PointLight* lit = new PointLight;
 	lit->ambient = { 0.2f, 0.2f, 0.2f };
@@ -541,6 +542,10 @@ void PmxModelScene::render()
 
 	RenderContext::vs = m_VS;
 	RenderContext::ps = m_PS;
+
+	
+
+
 	m_VS->world.identity();
 	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
@@ -554,12 +559,18 @@ void PmxModelScene::render()
 	{
 		buff[vIndex] = RenderContext::vs->execute(m_model[0].vertices[vIndex]);
 	}
-	
+	RenderContext::alphaMode = AlphaMode::ALPHATOCOVERAGE;
+	RenderContext::transparency = 0.5f;
 	for (int i = 0; i < m_model.size(); ++i)
 	{
 		m_PS->texture = m_model[i].texture.get();
 		drawMesh(m_model[i], (Fragment*)&buff[0]);
 	}
+	RenderContext::alphaMode = AlphaMode::ALPHADISABLE;
+	m_VS->world = Transform::translate(0.f, 15.f, 10.f);
+	m_PS->texture = nullptr;
+	m_PS->material = m_bigBox.material;
+	drawMesh(m_transparentSphere);
 	if (onlyDrawPmxModel)
 	{
 		RenderContext::resolve();

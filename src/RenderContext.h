@@ -20,9 +20,9 @@ enum class DepthMode
 	NEVER,LESS,EQUAL,LESSEQUAL,ALWAYS
 };
 
-enum class BlendMode
+enum class AlphaMode
 {
-
+	ALPHADISABLE,ALPHABLENDING,ALPHATOCOVERAGE
 };
 
 enum class MSAALevel
@@ -42,11 +42,14 @@ public:
 	static CullMode cullMode;
 	static FillMode fillMode;
 	static DepthMode depthMode;
+	static AlphaMode alphaMode;
+	static float transparency;
 	static bool alphaBlending;
 	static bool drawColor;
 	static bool clockwise;
 	static unsigned int* renderTarget;
 	static bool* pixelMask;
+	static char* sampleMasks;
 	static float* zbuffers;
 	static Vector3f* pixelColors;
 	static Vector3f eyePos;
@@ -60,7 +63,7 @@ public:
 	static const float clipW;
 	static const int width = 800;
 	static const int height = 600;
-	static const MSAALevel msaaLevel = MSAALevel::MSAA0X;
+	static const MSAALevel msaaLevel = MSAALevel::MSAA4X;
 	
 public:
 	static void init();

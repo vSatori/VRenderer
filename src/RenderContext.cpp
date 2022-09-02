@@ -21,11 +21,14 @@ const float RenderContext::clipW = 0.00001f;
 CullMode RenderContext::cullMode = CullMode::CULLBACKFACE;
 FillMode RenderContext::fillMode = FillMode::SOLID;
 DepthMode RenderContext::depthMode = DepthMode::LESS;
+AlphaMode RenderContext::alphaMode = AlphaMode::ALPHADISABLE;
+float RenderContext::transparency = 1.f;
 bool RenderContext::alphaBlending = false;
 bool RenderContext::drawColor = true;
 bool RenderContext::clockwise = true;
 unsigned int* RenderContext::renderTarget = nullptr;
 bool* RenderContext::pixelMask = nullptr;
+char* RenderContext::sampleMasks = nullptr;
 float* RenderContext::zbuffers = nullptr;
 Vector3f* RenderContext::pixelColors = nullptr;
 
@@ -76,26 +79,30 @@ void RenderContext::init()
 	zbuffers = new float[width * height * sampleCount];
 	pixelColors = new Vector3f[width * height * sampleCount];
 	pixelMask = new bool[width * height];
-	
+	sampleMasks = new char[width * height * sampleCount];
 }
 
 void RenderContext::finalize()
 {
 	if (renderTarget)
 	{
-		delete renderTarget;
+		delete[] renderTarget;
 	}
 	if (pixelColors)
 	{
-		delete pixelColors;
+		delete[] pixelColors;
 	}
 	if (zbuffers)
 	{
-		delete zbuffers;
+		delete[] zbuffers;
 	}
 	if (pixelMask)
 	{
-		delete pixelMask;
+		delete[] pixelMask;
+	}
+	if (sampleMasks)
+	{
+		delete[] sampleMasks;
 	}
 }
 
@@ -113,7 +120,9 @@ void RenderContext::clear()
 	for (int i = 0; i < count; ++i)
 	{
 		zbuffers[i] = 1.f;
+
 	}
+	memset(sampleMasks, 0, count);
 	int floatSize = count * 3;
 	float* p = (float*)&pixelColors[0];
 	for (int i = 0; i < floatSize; ++i)
@@ -283,13 +292,14 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 	const float* pfm2 = (const float*)&fm2;
 	const float* pfm3 = (const float*)&fm3;
 
-
+	float* depths = new float[sampleCount];
 	for (int y = miny; y <= maxy; ++y)
 	{
 		for (int x = minx; x <= maxx; ++x)
 		{
 			bool isDone = false;
 			Vector3f sampleColor;
+			
 			for (int index = 0; index < sampleCount; ++index)
 			{
 				Vector2f p{ static_cast<float>(x), static_cast<float>(y) };
@@ -328,12 +338,12 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 
 				float z = (fm1.posH.z * a + fm2.posH.z * b + fm3.posH.z * c);
 				currentPixelIndex = (width * y + x) * sampleCount + index;
-				if (!depthTest(z, currentPixelIndex))
+				if (!depthTest(z, currentPixelIndex) && sampleMasks[currentPixelIndex] == 1)
 				{
 					continue;
 				}
-				zbuffers[currentPixelIndex] = z;
-
+				//zbuffers[currentPixelIndex] = z;
+				depths[index] = z;
 				if (!drawColor)
 				{
 					continue;
@@ -362,16 +372,36 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 					}
 					isDone = true;
 				}
-
+				sampleMasks[currentPixelIndex] = 1;
 				pixelMask[currentPixelIndex / sampleCount] = true;
-				pixelColors[currentPixelIndex] = sampleColor;
+				//pixelColors[currentPixelIndex] = sampleColor;
+			}
+			if (alphaMode == AlphaMode::ALPHATOCOVERAGE && msaaLevel >= MSAALevel::MSAA4X)
+			{
+				int num = sampleCount - sampleCount * transparency;
+				for (int i = 0; i < num; ++i)
+				{
+					sampleMasks[(width * y + x) * sampleCount + i] = 0;
+				}
+			}
+			if (isDone)
+			{
+				for (int i = 0; i < sampleCount; ++i)
+				{
+					if (sampleMasks[(width * y + x) * sampleCount + i])
+					{
+						zbuffers[(width * y + x) * sampleCount + i] = depths[i];
+						pixelColors[(width * y + x) * sampleCount + i] = sampleColor;
+					}
+				}
 			}
 		}
 	}
+	delete[] depths;
 }
 void RenderContext::resolve()
 {
-	float weight = 1.f / sampleCount;
+	//float weight = 1.f / sampleCount;
 	int num = width * height * sampleCount;
 	for (int i = 0; i < num; i += sampleCount)
 	{
@@ -382,9 +412,10 @@ void RenderContext::resolve()
 		Vector3f color;
 		for (int j = 0; j < sampleCount; ++j)
 		{
-			color += pixelColors[i + j] * weight;
+			color += pixelColors[i + j];
 		}
-		renderTarget[i / sampleCount] = colorValue(color);
+		
+		renderTarget[i / sampleCount] = colorValue(color / sampleCount);
 	}
 }
 void RenderContext::drawLine(int x1, int y1, int x2, int y2)
