@@ -24,14 +24,14 @@ VRenderer is a simple soft rasterization renderer,for the practice of graphics k
 ![](https://github.com/vSatori/VRenderer/blob/main/screenshots/alpha2coverage.png)
 ![](https://github.com/vSatori/VRenderer/blob/main/screenshots/alphablending.png)
 
-Alpha To Coverage & Alpha Blending
+                                      Alpha To Coverage & Alpha Blending
 
 - MSAA
 
 ![](https://github.com/vSatori/VRenderer/blob/main/screenshots/nomsaa.png)
 ![](https://github.com/vSatori/VRenderer/blob/main/screenshots/mass8x.png)
 
-No MSAA & MSAA8X
+                                                No MSAA & MSAA8X
 
 ## Dependencies
 
