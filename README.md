@@ -1,23 +1,34 @@
 # VRenderer
 VRenderer is a simple soft rasterization renderer,for the practice of graphics knowledge.
 
-<figure>
-  <img src = "https://github.com/vSatori/VRenderer/blob/main/screenshots/cubemap.png" width = "40%">
-  <img src = "https://github.com/vSatori/VRenderer/blob/main/screenshots/bachong.png" width = "40%">
-</figure>
- <br/>
-
 ## Features
 
 - Homogeneous Space Clipping
-- cull
+- Culling
 - Depth Test
 - Texture
 - Shadow Mapping
+
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/shadowmapping.png)
+
 - Cube Mapping
+
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/cubemapping.png)
+
 - Blinn-Phong Shading
+
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/pointlight.png)
+
 - Alpha Blending
+
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/noalpha.png)
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/alphatocoverage.png)
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/alphablending.png)
+
 - MSAA
+
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/nomsaa.png)
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/msaa8x.png)
 
 
 ## Dependencies
@@ -25,7 +36,7 @@ VRenderer is a simple soft rasterization renderer,for the practice of graphics k
 - [stb_image](https://github.com/nothings/stb)
 - [MMDFormats](https://github.com/oguna/MMDFormats)
 
-## Reference
+## References
 
 - https://github.com/MKXJun/DirectX11-With-Windows-SDK
 - https://learnopengl-cn.github.io/
