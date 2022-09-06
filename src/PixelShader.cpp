@@ -1,7 +1,7 @@
 #include "PixelShader.h"
 #include "RenderContext.h"
-static float offset = 1.f / 1000.f;
-static Vector2f shaowSamplePts[]{ {-offset, -offset}, {-offset, offset}, {offset, -offset}, {offset, offset},{0.f, 0.f},{0.f, -offset}, { 0.f, offset}, {offset, 0.f}, {-offset, 0.f} };
+static float g_offset = 1.f / 1000.f;
+static Vector2f g_shadowSamplePts[]{ {-g_offset, -g_offset}, {-g_offset, g_offset}, {g_offset, -g_offset}, {g_offset, g_offset},{0.f, 0.f},{0.f, -g_offset}, { 0.f, g_offset}, {g_offset, 0.f}, {-g_offset, 0.f} };
 
 static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 {
@@ -10,7 +10,7 @@ static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 	float shadowFactor = 0.f;
 	for (int i = 0; i < 9; ++i)
 	{
-		float depth = tex->sample(x + shaowSamplePts[i].x, y + shaowSamplePts[i].y, RenderContext::currentSampleIndex);
+		float depth = tex->sample(x + g_shadowSamplePts[i].x, y + g_shadowSamplePts[i].y, RenderContext::cxt_currentSampleIndex);
 		shadowFactor += pos.z - 0.05f < depth ? 1.f : 0.f;
 	}
 	return shadowFactor / 9.f;
@@ -36,14 +36,14 @@ Vector3f GenericPixelShader::execute(const Fragment& fm)
 		{
 			shadow = computeShadow(fm.posD, depthTexture);
 		}
-		color = light->compute(RenderContext::eyePos, fm.posW, fm.normalW, material, shadow);
+		color = light->compute(RenderContext::cxt_eyePos, fm.posW, fm.normalW, material, shadow);
 	}
-	if (!RenderContext::alphaBlending)
+	if (RenderContext::cxt_alphaMode != AlphaMode::ALPHABLENDING)
 	{
 		return color;
 	}
-	Vector3f another = bgr2Vector(RenderContext::renderTarget[RenderContext::currentPixelIndex]);
-	return color * alpha + another * (1.f - alpha);
+	Vector3f another = RenderContext::cxt_pixelColors[RenderContext::cxt_currentPixelIndex];
+	return color * RenderContext::cxt_transparency + another * (1.f - RenderContext::cxt_transparency);
 }
 
 Vector3f SkyPixelShader::execute(const Fragment& fm)
@@ -68,7 +68,7 @@ Vector3f OceanWavePixelShader::execute(const Fragment& fm)
 
 	Vector3f heightColor = shallowColor * height + deepColor * (1 - height);
 
-	Vector3f viewDir = RenderContext::eyePos - fm.posW;
+	Vector3f viewDir = RenderContext::cxt_eyePos - fm.posW;
 	viewDir.normalize();
 
 	Vector3f skyColor{ 0.65f, 0.8f, 0.95f };
@@ -92,5 +92,4 @@ Vector3f OceanWavePixelShader::execute(const Fragment& fm)
 	comnbineColor *= (1.f - specu);
 	comnbineColor += specularFinal;
 	return comnbineColor;
-	return Vector3f();
 }

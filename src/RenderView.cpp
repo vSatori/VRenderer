@@ -23,8 +23,8 @@ RenderView::~RenderView()
 void RenderView::setScene(Scene* scene)
 {
 	m_currentScene = scene;
-	RenderContext::nearPlane = scene->nearPlane;
-	RenderContext::farPlane = scene->farPlane;
+	RenderContext::cxt_nearPlane = scene->nearPlane;
+	RenderContext::cxt_farPlane = scene->farPlane;
 }
 
 bool RenderView::init(HINSTANCE ins)
@@ -46,7 +46,7 @@ bool RenderView::init(HINSTANCE ins)
 		return false;
 	};
 
-	RECT R = { 0, 0, RenderContext::width, RenderContext::height };
+	RECT R = { 0, 0, RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight };
 	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
 	int width = R.right - R.left;
 	int height = R.bottom - R.top;
@@ -67,8 +67,8 @@ bool RenderView::init(HINSTANCE ins)
 		return false;
 	}
 
-	BITMAPINFO info = { { sizeof(BITMAPINFOHEADER), RenderContext::width, -RenderContext::height, 1, 32, BI_RGB,
-		RenderContext::width * RenderContext::height * 4, 0, 0, 0, 0 } };
+	BITMAPINFO info = { { sizeof(BITMAPINFOHEADER), RenderContext::cxt_frameWidth, -RenderContext::cxt_frameHeight, 1, 32, BI_RGB,
+		RenderContext::cxt_frameWidth * RenderContext::cxt_frameHeight * 4, 0, 0, 0, 0 } };
 	LPVOID ptr;
 	m_bitmap = CreateDIBSection(m_fdc, &info, DIB_RGB_COLORS, &ptr, 0, 0);
 	if (!m_bitmap)
@@ -122,9 +122,9 @@ void RenderView::renderScene()
 		return;
 	}
 	m_currentScene->render();
-	memcpy(m_frameBuffer, RenderContext::renderTarget, RenderContext::width * RenderContext::height * 4);
+	memcpy(m_frameBuffer, RenderContext::cxt_renderTarget, RenderContext::cxt_frameWidth * RenderContext::cxt_frameHeight * 4);
 	HDC dc = GetDC(m_wnd);
-	BitBlt(dc, 0, 0, RenderContext::width, RenderContext::height, m_fdc, 0, 0, SRCCOPY);
+	BitBlt(dc, 0, 0, RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, m_fdc, 0, 0, SRCCOPY);
 	ReleaseDC(m_wnd, dc);
 }
 

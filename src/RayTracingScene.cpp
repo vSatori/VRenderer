@@ -66,13 +66,13 @@ void RayTracingScene::render()
 	hits.hitables.push_back(sp4);
 
 
-	for (int y = 0; y < RenderContext::height; ++y)
+	for (int y = 0; y < RenderContext::cxt_frameHeight; ++y)
 	{
-		for (int x = 0; x < RenderContext::width; ++x)
+		for (int x = 0; x < RenderContext::cxt_frameWidth; ++x)
 		{
 			Vector3f color;
-			float v = (float)y / float(RenderContext::height);
-			float u = (float)x / float(RenderContext::width);
+			float v = (float)y / float(RenderContext::cxt_frameHeight);
+			float u = (float)x / float(RenderContext::cxt_frameWidth);
 			Vector3f dir = lbCorner + horizental * u - vertical * v - origin;
 			Ray ray{ origin,  dir };
 			color += hitColor(ray, hits);
@@ -83,7 +83,7 @@ void RayTracingScene::render()
 			int green = static_cast<int>(color.y * 255.f);
 			int blue  = static_cast<int>(color.z * 255.f);
 			int colorValue = (red << 16) + (green << 8) + blue;
-			RenderContext::renderTarget[y * RenderContext::width + x] = colorValue;
+			RenderContext::cxt_renderTarget[y * RenderContext::cxt_frameWidth + x] = colorValue;
 		}
 	}
 }

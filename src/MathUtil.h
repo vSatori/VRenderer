@@ -77,8 +77,8 @@ public:
 		return *this;
 	}
 public:
-	T x = T();
-	T y = T();
+	T x{ T() };
+	T y{ T() };
 };
 
 using Vector2i = Vector2<int>;
@@ -208,9 +208,9 @@ public:
 		return res;
 	}
 public:
-	T x = T();
-	T y = T();
-	T z = T();
+	T x{ T() };
+	T y{ T() };
+	T z{ T()};
 };
 
 using Vector3i = Vector3<int>;
@@ -320,10 +320,10 @@ public:
 		return x * vec4.x + y * vec4.y + z * vec4.z + w * vec4.w;
 	}
 public:
-	T x = T();
-	T y = T();
-	T z = T();
-	T w = T();
+	T x{ T() };
+	T y{ T() };
+	T z{ T() };
+	T w{ T() };
 };
 
 using Vector4i = Vector4<int>;

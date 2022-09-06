@@ -17,57 +17,58 @@ static Vector2f* g_currentSamples = g_samples4X;
 static unsigned int g_whiteValue = (255 << 16) + (255 << 8) + 255;
 static unsigned int g_redValue = (255 << 16);
 
-const float RenderContext::clipW = 0.00001f;
-CullMode RenderContext::cullMode = CullMode::CULLBACKFACE;
-FillMode RenderContext::fillMode = FillMode::SOLID;
-DepthMode RenderContext::depthMode = DepthMode::LESS;
-AlphaMode RenderContext::alphaMode = AlphaMode::ALPHADISABLE;
-float RenderContext::transparency = 1.f;
-bool RenderContext::alphaBlending = false;
-bool RenderContext::drawColor = true;
-bool RenderContext::clockwise = true;
-unsigned int* RenderContext::renderTarget = nullptr;
-bool* RenderContext::pixelMask = nullptr;
-char* RenderContext::sampleMasks = nullptr;
-float* RenderContext::zbuffers = nullptr;
-Vector3f* RenderContext::pixelColors = nullptr;
+static float g_sampleDepths[8];
+static char g_sampleMasks[8];
 
-Vector3f RenderContext::eyePos = { 0.f, 0.f, 0.f };
-float RenderContext::nearPlane = 0.f;
-float RenderContext::farPlane = 100.f;
-VertexShader* RenderContext::vs = nullptr;
-PixelShader* RenderContext::ps = nullptr;
-unsigned int RenderContext::currentPixelIndex = 0;
-unsigned int RenderContext::currentSampleIndex = 0;
-int RenderContext::sampleCount = 4;
+const float RenderContext::cxt_clipW = 0.00001f;
+CullMode RenderContext::cxt_cullMode = CullMode::CULLBACKFACE;
+FillMode RenderContext::cxt_fillMode = FillMode::SOLID;
+DepthMode RenderContext::cxt_depthMode = DepthMode::LESS;
+AlphaMode RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
+float RenderContext::cxt_transparency = 1.f;
+bool RenderContext::cxt_discardFragment = true;
+bool RenderContext::cxt_clockwiseOrder = true;
+unsigned int* RenderContext::cxt_renderTarget = nullptr;
+bool* RenderContext::cxt_pixelMask = nullptr;
+float* RenderContext::cxt_zbuffers = nullptr;
+Vector3f* RenderContext::cxt_pixelColors = nullptr;
+
+Vector3f RenderContext::cxt_eyePos = { 0.f, 0.f, 0.f };
+float RenderContext::cxt_nearPlane = 0.f;
+float RenderContext::cxt_farPlane = 100.f;
+VertexShader* RenderContext::cxt_VS = nullptr;
+PixelShader* RenderContext::cxt_PS = nullptr;
+unsigned int RenderContext::cxt_currentPixelIndex = 0;
+unsigned int RenderContext::cxt_currentSampleIndex = 0;
+int RenderContext::cxt_sampleCount = 4;
 
 
 
 void RenderContext::init()
 {
-	switch (RenderContext::msaaLevel)
+	switch (RenderContext::cxt_msaaLevel)
 	{
 	case MSAALevel::MSAA0X:
 	{
-		RenderContext::sampleCount = 1;
+		RenderContext::cxt_sampleCount = 1;
 		g_currentSamples = g_samples0X;
 		break;
 	}
 	case MSAALevel::MSAA2X:
 	{
-		RenderContext::sampleCount = 2;
+		RenderContext::cxt_sampleCount = 2;
 		g_currentSamples = g_samples2X;
 		break;
 	}
 	case MSAALevel::MSAA4X:
 	{
-		RenderContext::sampleCount = 4;
+		RenderContext::cxt_sampleCount = 4;
 		g_currentSamples = g_samples4X;
 		break;
 	}
 	case MSAALevel::MSAA8X:
 	{
-		RenderContext::sampleCount = 8;
+		RenderContext::cxt_sampleCount = 8;
 		g_currentSamples = g_samples8X;
 		break;
 	}
@@ -75,66 +76,61 @@ void RenderContext::init()
 		break;
 	}
 
-	renderTarget = new unsigned int[width * height];
-	zbuffers = new float[width * height * sampleCount];
-	pixelColors = new Vector3f[width * height * sampleCount];
-	pixelMask = new bool[width * height];
-	sampleMasks = new char[width * height * sampleCount];
+	cxt_renderTarget = new unsigned int[cxt_frameWidth * cxt_frameHeight];
+	cxt_zbuffers = new float[cxt_frameWidth * cxt_frameHeight * cxt_sampleCount];
+	cxt_pixelColors = new Vector3f[cxt_frameWidth * cxt_frameHeight * cxt_sampleCount];
+	cxt_pixelMask = new bool[cxt_frameWidth * cxt_frameHeight];
 }
 
 void RenderContext::finalize()
 {
-	if (renderTarget)
+	if (cxt_renderTarget)
 	{
-		delete[] renderTarget;
+		delete[] cxt_renderTarget;
 	}
-	if (pixelColors)
+	if (cxt_pixelColors)
 	{
-		delete[] pixelColors;
+		delete[] cxt_pixelColors;
 	}
-	if (zbuffers)
+	if (cxt_zbuffers)
 	{
-		delete[] zbuffers;
+		delete[] cxt_zbuffers;
 	}
-	if (pixelMask)
+	if (cxt_pixelMask)
 	{
-		delete[] pixelMask;
-	}
-	if (sampleMasks)
-	{
-		delete[] sampleMasks;
+		delete[] cxt_pixelMask;
 	}
 }
 
 void RenderContext::clear()
 {
-	int count = width * height;
+	int count = cxt_frameWidth * cxt_frameHeight;
 	
 	for (int i = 0; i < count; ++i)
 	{
-		renderTarget[i] = g_whiteValue;
+		cxt_renderTarget[i] = g_whiteValue;
 	}
 	
-	memset(pixelMask, 0, sizeof(bool) * count);
-	count *= sampleCount;
+	memset(cxt_pixelMask, 0, sizeof(bool) * count);
+	count *= cxt_sampleCount;
 	for (int i = 0; i < count; ++i)
 	{
-		zbuffers[i] = 1.f;
-
+		cxt_zbuffers[i] = 1.f;
 	}
-	memset(sampleMasks, 0, count);
+	
 	int floatSize = count * 3;
-	float* p = (float*)&pixelColors[0];
+	float* p = (float*)&cxt_pixelColors[0];
 	for (int i = 0; i < floatSize; ++i)
 	{
 		p[i] = 1.f;
 	}
+	
 
 }
 
 bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 {
-	switch (cullMode)
+	switch (cxt_cullMode)
 	{
 		case CullMode::CULLNONE:
 		{
@@ -142,8 +138,8 @@ bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 		}
 		case CullMode::CULLFRONTFACE:
 		{
-			bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
-			if (clockwise)
+			bool b = (faceNormal.dot(cxt_eyePos - vertexPos) >= 0);
+			if (cxt_clockwiseOrder)
 			{
 				return !b;
 			}
@@ -152,8 +148,8 @@ bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 		}
 		case CullMode::CULLBACKFACE:
 		{
-			bool b = (faceNormal.dot(eyePos - vertexPos) >= 0);
-			if (clockwise)
+			bool b = (faceNormal.dot(cxt_eyePos - vertexPos) >= 0);
+			if (cxt_clockwiseOrder)
 			{
 				return b;
 			}
@@ -169,7 +165,7 @@ bool RenderContext::Cull(const Vector3f& vertexPos, const Vector3f& faceNormal)
 
 bool RenderContext::depthTest(float z, int index)
 {
-	switch (depthMode)
+	switch (cxt_depthMode)
 	{
 		case DepthMode::NEVER:
 		{
@@ -177,15 +173,15 @@ bool RenderContext::depthTest(float z, int index)
 		}
 		case DepthMode::LESS:
 		{
-			return z < zbuffers[index];
+			return z < cxt_zbuffers[index];
 		}
 		case DepthMode::EQUAL:
 		{
-			return z == zbuffers[index];
+			return z == cxt_zbuffers[index];
 		}
 		case DepthMode::LESSEQUAL:
 		{
-			return z <= zbuffers[index];
+			return z <= cxt_zbuffers[index];
 		}
 		case DepthMode::ALWAYS:
 		{
@@ -199,7 +195,7 @@ bool RenderContext::depthTest(float z, int index)
 
 void RenderContext::draw(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3)
 {
-	switch (fillMode)
+	switch (cxt_fillMode)
 	{
 		case FillMode::SOLID:
 		{
@@ -208,16 +204,16 @@ void RenderContext::draw(const Fragment& fm1, const Fragment& fm2, const Fragmen
 		}
 		case FillMode::WIREFRAME:
 		{
-			Vector2f p1{ ((fm1.posH.x + 1.f) * 0.5f * width),  ((1.f - fm1.posH.y) * 0.5f * height) };
-			Vector2f p2{ ((fm2.posH.x + 1.f) * 0.5f * width),  ((1.f - fm2.posH.y) * 0.5f * height) };
-			Vector2f p3{ ((fm3.posH.x + 1.f) * 0.5f * width),  ((1.f - fm3.posH.y) * 0.5f * height) };
+			Vector2f p1{ ((fm1.posH.x + 1.f) * 0.5f * cxt_frameWidth),  ((1.f - fm1.posH.y) * 0.5f * cxt_frameHeight) };
+			Vector2f p2{ ((fm2.posH.x + 1.f) * 0.5f * cxt_frameWidth),  ((1.f - fm2.posH.y) * 0.5f * cxt_frameHeight) };
+			Vector2f p3{ ((fm3.posH.x + 1.f) * 0.5f * cxt_frameWidth),  ((1.f - fm3.posH.y) * 0.5f * cxt_frameHeight) };
 
 			int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
 			int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
 			int x3 = static_cast<int>(p3.x + 0.5f); int y3 = static_cast<int>(p3.y + 0.5f);
 
-			int h = height - 1;
-			int w = width  - 1;
+			int h = cxt_frameHeight - 1;
+			int w = cxt_frameWidth  - 1;
 			x1 = clamp(0, w, x1);
 			x2 = clamp(0, w, x2);
 			x3 = clamp(0, w, x3);
@@ -261,7 +257,7 @@ bool RenderContext::clippingTest(const Vector4f& v1, const Vector4f& v2, const V
 		return true;
 	}
 	
-	float w = clipW > nearPlane ? clipW : nearPlane;
+	float w = cxt_clipW > cxt_nearPlane ? cxt_clipW : cxt_nearPlane;
 	if (v1.w < w || v2.w < w || v3.w < w)
 	{
 		return true;
@@ -272,9 +268,9 @@ bool RenderContext::clippingTest(const Vector4f& v1, const Vector4f& v2, const V
 #include <iostream>
 void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, const Fragment & fm3)
 {
-	Vector2f p1{ ((fm1.posH.x + 1.f) * 0.5f * width),  ((1.f - fm1.posH.y) * 0.5f * height) };
-	Vector2f p2{ ((fm2.posH.x + 1.f) * 0.5f * width),  ((1.f - fm2.posH.y) * 0.5f * height) };
-	Vector2f p3{ ((fm3.posH.x + 1.f) * 0.5f * width),  ((1.f - fm3.posH.y) * 0.5f * height) };
+	Vector2f p1{ ((fm1.posH.x + 1.f) * 0.5f * cxt_frameWidth),  ((1.f - fm1.posH.y) * 0.5f * cxt_frameHeight) };
+	Vector2f p2{ ((fm2.posH.x + 1.f) * 0.5f * cxt_frameWidth),  ((1.f - fm2.posH.y) * 0.5f * cxt_frameHeight) };
+	Vector2f p3{ ((fm3.posH.x + 1.f) * 0.5f * cxt_frameWidth),  ((1.f - fm3.posH.y) * 0.5f * cxt_frameHeight) };
 
 	int x1 = static_cast<int>(p1.x + 0.5f); int y1 = static_cast<int>(p1.y + 0.5f);
 	int x2 = static_cast<int>(p2.x + 0.5f); int y2 = static_cast<int>(p2.y + 0.5f);
@@ -282,8 +278,8 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 
 	int minx = std::max(findMin(x1, x2, x3), 1);
 	int miny = std::max(findMin(y1, y2, y3), 1);
-	int maxx = std::min(findMax(x1, x2, x3), width  - 1);
-	int maxy = std::min(findMax(y1, y2, y3), height - 1);
+	int maxx = std::min(findMax(x1, x2, x3), cxt_frameWidth  - 1);
+	int maxy = std::min(findMax(y1, y2, y3), cxt_frameHeight - 1);
 
 	Fragment frag;
 	
@@ -292,15 +288,15 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 	const float* pfm2 = (const float*)&fm2;
 	const float* pfm3 = (const float*)&fm3;
 
-	float* depths = new float[sampleCount];
 	for (int y = miny; y <= maxy; ++y)
 	{
 		for (int x = minx; x <= maxx; ++x)
 		{
-			bool isDone = false;
+			bool coveraged = false;
 			Vector3f sampleColor;
-			
-			for (int index = 0; index < sampleCount; ++index)
+			int baseIndex = (cxt_frameWidth * y + x) * cxt_sampleCount;
+			memset(g_sampleMasks, 0, cxt_sampleCount);
+			for (int index = 0; index < cxt_sampleCount; ++index)
 			{
 				Vector2f p{ static_cast<float>(x), static_cast<float>(y) };
 				p += g_currentSamples[index];
@@ -309,7 +305,7 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 				float areaB = ((p - p3).cross(p1 - p3));
 				float areaC = ((p - p1).cross(p2 - p1));
 
-				if (clockwise)
+				if (cxt_clockwiseOrder)
 				{
 					bool okA = areaA < 0.000001f;
 					bool okB = areaB < 0.000001f;
@@ -337,20 +333,20 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 				float c = areaC / area;
 
 				float z = (fm1.posH.z * a + fm2.posH.z * b + fm3.posH.z * c);
-				currentPixelIndex = (width * y + x) * sampleCount + index;
-				if (!depthTest(z, currentPixelIndex) && sampleMasks[currentPixelIndex] == 1)
+				g_sampleDepths[index] = z;
+				cxt_currentPixelIndex = (cxt_frameWidth * y + x) * cxt_sampleCount + index;
+				if (!depthTest(z, cxt_currentPixelIndex))
 				{
 					continue;
 				}
-				//zbuffers[currentPixelIndex] = z;
-				depths[index] = z;
-				if (!drawColor)
+				if (!cxt_discardFragment)
 				{
 					continue;
 				}
-				if (!isDone)
+				
+				if (!coveraged)
 				{
-					currentSampleIndex = index;
+					cxt_currentSampleIndex = index;
 					a /= fm1.posH.w;
 					b /= fm2.posH.w;
 					c /= fm3.posH.w;
@@ -360,7 +356,7 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 					{
 						pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * rw;
 					}
-					sampleColor = ps->execute(frag);
+					sampleColor = cxt_PS->execute(frag);
 					
 					float* pc = (float*)&sampleColor;
 					for (int i = 0; i < 3; ++i)
@@ -370,52 +366,49 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 							pc[i] = 1.f;
 						}
 					}
-					isDone = true;
+					coveraged = true;
 				}
-				sampleMasks[currentPixelIndex] = 1;
-				pixelMask[currentPixelIndex / sampleCount] = true;
-				//pixelColors[currentPixelIndex] = sampleColor;
+				g_sampleMasks[index] = 1;
+				cxt_pixelMask[cxt_currentPixelIndex / cxt_sampleCount] = true;
 			}
-			if (alphaMode == AlphaMode::ALPHATOCOVERAGE && msaaLevel >= MSAALevel::MSAA4X)
+			if (cxt_alphaMode == AlphaMode::ALPHATOCOVERAGE && cxt_msaaLevel >= MSAALevel::MSAA4X)
 			{
-				int num = sampleCount - sampleCount * transparency;
+				int num = cxt_sampleCount - cxt_sampleCount * cxt_transparency;
 				for (int i = 0; i < num; ++i)
 				{
-					sampleMasks[(width * y + x) * sampleCount + i] = 0;
+					g_sampleMasks[i] = 0;
 				}
-			}
-			if (isDone)
+			}		
+			if (coveraged)
 			{
-				for (int i = 0; i < sampleCount; ++i)
+				for (int i = 0; i < cxt_sampleCount; ++i)
 				{
-					if (sampleMasks[(width * y + x) * sampleCount + i])
+					int index = baseIndex + i;
+					if (g_sampleMasks[i])
 					{
-						zbuffers[(width * y + x) * sampleCount + i] = depths[i];
-						pixelColors[(width * y + x) * sampleCount + i] = sampleColor;
+						cxt_zbuffers[index] = g_sampleDepths[i];
+						cxt_pixelColors[index] = sampleColor;
 					}
 				}
 			}
 		}
 	}
-	delete[] depths;
 }
 void RenderContext::resolve()
 {
-	//float weight = 1.f / sampleCount;
-	int num = width * height * sampleCount;
-	for (int i = 0; i < num; i += sampleCount)
+	int num = cxt_frameWidth * cxt_frameHeight * cxt_sampleCount;
+	for (int i = 0; i < num; i += cxt_sampleCount)
 	{
-		if (!pixelMask[i / sampleCount])
+		if (!cxt_pixelMask[i / cxt_sampleCount])
 		{
 			continue;
 		}
 		Vector3f color;
-		for (int j = 0; j < sampleCount; ++j)
+		for (int j = 0; j < cxt_sampleCount; ++j)
 		{
-			color += pixelColors[i + j];
+			color += cxt_pixelColors[i + j];
 		}
-		
-		renderTarget[i / sampleCount] = colorValue(color / sampleCount);
+		cxt_renderTarget[i / cxt_sampleCount] = colorValue(color / cxt_sampleCount);
 	}
 }
 void RenderContext::drawLine(int x1, int y1, int x2, int y2)
@@ -444,11 +437,11 @@ void RenderContext::drawLine(int x1, int y1, int x2, int y2)
 	{
 		if (steep)
 		{
-			renderTarget[y + width * x] = g_redValue;
+			cxt_renderTarget[y + cxt_frameWidth * x] = g_redValue;
 		}
 		else
 		{
-			renderTarget[x + width * y] = g_redValue;
+			cxt_renderTarget[x + cxt_frameWidth * y] = g_redValue;
 		}
 		error2 += derror2;
 		if (error2 > dx)
@@ -462,7 +455,7 @@ void RenderContext::drawLine(int x1, int y1, int x2, int y2)
 
 
 
-std::vector<Fragment> RenderContext::polygonClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3)
+std::vector<Fragment> RenderContext::sutherlandHodgemanClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3)
 {
 	std::vector<Fragment> output;
 	std::vector<Fragment> inputW{ fm1, fm2, fm3 };
@@ -562,7 +555,7 @@ Fragment RenderContext::clipPlane(const Fragment& fm1, const Fragment& fm2, Side
 
 Fragment RenderContext::clipWPlane(const Fragment& fm1, const Fragment& fm2)
 {
-	float w = clipW > nearPlane ? clipW : nearPlane;
+	float w = cxt_clipW > cxt_nearPlane ? cxt_clipW : cxt_nearPlane;
 	float t = (fm1.posH.w - w) / (fm1.posH.w - fm2.posH.w);
 	return Fragment::lerp(fm1, fm2, t);
 }
@@ -604,7 +597,7 @@ bool RenderContext::inside(const Vector4f& pos, Side side)
 	}
 	case Side::W:
 	{
-		float w = clipW > nearPlane ? clipW : nearPlane;
+		float w = cxt_clipW > cxt_nearPlane ? cxt_clipW : cxt_nearPlane;
 		in = pos.w >= w;
 		break;
 	}

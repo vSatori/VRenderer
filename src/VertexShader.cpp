@@ -14,7 +14,7 @@ Fragment GenericVertexShader::execute(const Vertex& vin)
 	out.normalW.normalize();
 	return out;
 }
-#include "Transform.h"
+
 Fragment SkyVertexShader::execute(const Vertex& vin)
 {
 	Fragment out;

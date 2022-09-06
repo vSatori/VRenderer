@@ -89,7 +89,6 @@ private:
 	std::vector<Mesh> m_model;
 	Mesh m_bigBox;
 	Mesh m_lightBox;
-	Mesh m_transparentSphere;
 
 	GenericVertexShader* m_VS;
 	GenericPixelShader*  m_PS;

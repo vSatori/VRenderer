@@ -39,31 +39,31 @@ enum class Side
 class RenderContext
 {
 public:
-	static CullMode cullMode;
-	static FillMode fillMode;
-	static DepthMode depthMode;
-	static AlphaMode alphaMode;
-	static float transparency;
-	static bool alphaBlending;
-	static bool drawColor;
-	static bool clockwise;
-	static unsigned int* renderTarget;
-	static bool* pixelMask;
-	static char* sampleMasks;
-	static float* zbuffers;
-	static Vector3f* pixelColors;
-	static Vector3f eyePos;
-	static float nearPlane;
-	static float farPlane;
-	static VertexShader* vs;
-	static PixelShader* ps;
-	static unsigned int currentPixelIndex;
-	static unsigned int currentSampleIndex;
-	static int sampleCount;
-	static const float clipW;
-	static const int width = 800;
-	static const int height = 600;
-	static const MSAALevel msaaLevel = MSAALevel::MSAA4X;
+	static CullMode cxt_cullMode;
+	static FillMode cxt_fillMode;
+	static DepthMode cxt_depthMode;
+	static AlphaMode cxt_alphaMode;
+	static float cxt_transparency;
+	static bool cxt_discardFragment;
+	static bool cxt_clockwiseOrder;
+	static unsigned int* cxt_renderTarget;
+	static bool* cxt_pixelMask;
+	static float* cxt_zbuffers;
+	static Vector3f* cxt_pixelColors;
+	static Vector3f cxt_eyePos;
+	static float cxt_nearPlane;
+	static float cxt_farPlane;
+	static VertexShader* cxt_VS;
+	static PixelShader* cxt_PS;
+	static unsigned int cxt_currentPixelIndex;
+	static unsigned int cxt_currentSampleIndex;
+	static int cxt_sampleCount;
+	static const float cxt_clipW;
+	static const int cxt_frameWidth = 800;
+	static const int cxt_frameHeight = 600;
+	static const MSAALevel cxt_msaaLevel = MSAALevel::MSAA4X;
+
+	
 	
 public:
 	static void init();
@@ -78,7 +78,7 @@ public:
 	static void resolve();
 	
 	
-	static std::vector<Fragment> polygonClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
+	static std::vector<Fragment> sutherlandHodgemanClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
 	static Fragment clipPlane(const Fragment& fm1, const Fragment& fm2, Side side);
 	static Fragment clipWPlane(const Fragment& fm1, const Fragment& fm2);
 	static bool inside(const Vector4f& pos, Side side);

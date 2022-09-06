@@ -6,6 +6,7 @@
 #include "Transform.h"
 #include "MikuMikuFormats/Pmx.h"
 
+extern std::string g_resourcePath;
 
 static void perspectiveDivide(Vector4f& posH)
 {
@@ -33,7 +34,7 @@ void Scene::drawMesh(const Mesh & mesh)
 	Fragment* vertexBuff = new Fragment[vertexSize];
 	for (int vIndex = 0; vIndex < vertexSize; ++vIndex)
 	{
-		vertexBuff[vIndex] = RenderContext::vs->execute(mesh.vertices[vIndex]);
+		vertexBuff[vIndex] = RenderContext::cxt_VS->execute(mesh.vertices[vIndex]);
 	}
 	drawMesh(mesh, vertexBuff);
 	delete[] vertexBuff;
@@ -56,7 +57,7 @@ void Scene::drawMesh(const Mesh& mesh, Fragment* vertexBuff)
 		
 		if (RenderContext::clippingTest(vo1.posH, vo2.posH, vo3.posH))
 		{
-			std::vector<Fragment> vos = RenderContext::polygonClipping(vo1, vo2, vo3);
+			std::vector<Fragment> vos = RenderContext::sutherlandHodgemanClipping(vo1, vo2, vo3);
 			for (auto& v : vos)
 			{
 				perspectiveDivide(v.posH);
@@ -91,12 +92,12 @@ DynamicEnviromentMappingScene::DynamicEnviromentMappingScene() :
 	MeshFactory::createCube(m_sky, 1.f, 1.f, 1.f);
 	MeshFactory::flipMesh(m_sky);
 	std::vector<std::string> files;
-	files.push_back("../resources/skybox/lake/left.jpg");
-	files.push_back("../resources/skybox/lake/right.jpg");
-	files.push_back("../resources/skybox/lake/top.jpg");
-	files.push_back("../resources/skybox/lake/bottom.jpg");
-	files.push_back("../resources/skybox/lake/back.jpg");
-	files.push_back("../resources/skybox/lake/front.jpg");
+	files.push_back(g_resourcePath + "skybox/lake/left.jpg");
+	files.push_back(g_resourcePath + "skybox/lake/right.jpg");
+	files.push_back(g_resourcePath + "skybox/lake/top.jpg");
+	files.push_back(g_resourcePath + "skybox/lake/bottom.jpg");
+	files.push_back(g_resourcePath + "skybox/lake/back.jpg");
+	files.push_back(g_resourcePath + "skybox/lake/front.jpg");
 	m_sky.cubeMap = std::make_unique<CubeMap>(files);
 
 	std::vector<Vector3f> colors;
@@ -154,7 +155,7 @@ void DynamicEnviromentMappingScene::render()
 		m_angle = 0.f;
 	}
 
-	unsigned int* frameCache = RenderContext::renderTarget;
+	unsigned int* frameCache = RenderContext::cxt_renderTarget;
 	Camera cameraCache = camera;
 	float fovCache = fov;
 
@@ -171,15 +172,15 @@ void DynamicEnviromentMappingScene::render()
 	};
 	for (int i = 0; i < 6; ++i)
 	{
-		unsigned int* buff = new unsigned int[RenderContext::width * RenderContext::height];
-		RenderContext::renderTarget = buff;
+		unsigned int* buff = new unsigned int[RenderContext::cxt_frameWidth * RenderContext::cxt_frameHeight];
+		RenderContext::cxt_renderTarget = buff;
 		camera.target = targets[i];
 		render(false);
-		m_envCubeMap->setRowData(static_cast<CubeMap::Direction>(i), buff, RenderContext::width, RenderContext::height);
+		m_envCubeMap->setRowData(static_cast<CubeMap::Direction>(i), buff, RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight);
 		delete[] buff;
 	}
 	
-	RenderContext::renderTarget = frameCache;
+	RenderContext::cxt_renderTarget = frameCache;
 	camera = cameraCache;
 	fov = fovCache;
 	
@@ -190,23 +191,23 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 {
 	RenderContext::clear();
 	camera.update();
-	RenderContext::eyePos = camera.pos;
-	RenderContext::cullMode = CullMode::CULLBACKFACE;
+	RenderContext::cxt_eyePos = camera.pos;
+	RenderContext::cxt_cullMode = CullMode::CULLBACKFACE;
 	Matrix4 world;
-	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
+	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
 
 	m_commonVS->view = camera.matrix;
 	m_commonVS->projection = projection;
 	m_commonVS->vp = projection * camera.matrix;
 
-	RenderContext::vs = m_commonVS;
+	RenderContext::cxt_VS = m_commonVS;
 	if (drawRelect)
 	{
 		m_commonVS->world.identity();
-		RenderContext::ps = m_reflectPS;
+		RenderContext::cxt_PS = m_reflectPS;
 		drawMesh(m_reflectBox);
 	}
-	RenderContext::ps = m_spherePS;
+	RenderContext::cxt_PS = m_spherePS;
 	for (int index = 0; index < m_movingSpheres.size(); ++index)
 	{
 		const auto& movingSphere = m_movingSpheres[index];
@@ -217,9 +218,9 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 		drawMesh(movingSphere);		
 	}
 
-	RenderContext::cullMode = CullMode::CULLNONE;
-	RenderContext::vs = m_skyVS;
-	RenderContext::ps = m_skyPS;
+	RenderContext::cxt_cullMode = CullMode::CULLNONE;
+	RenderContext::cxt_VS = m_skyVS;
+	RenderContext::cxt_PS = m_skyPS;
 	m_skyVS->view = camera.matrix;
 	m_skyVS->projection = projection;
 	drawMesh(m_sky);
@@ -306,10 +307,10 @@ void ShadowMappingScene::render()
 	camera.pos = m_light->pos;
 	camera.useSphereMode = false;
 
-	RenderContext::drawColor = false;
+	RenderContext::cxt_discardFragment = false;
 	renderShadow();
-	m_depthTexture->setRowData(RenderContext::zbuffers, RenderContext::width, RenderContext::height, RenderContext::sampleCount);
-	RenderContext::drawColor = true;
+	m_depthTexture->setRowData(RenderContext::cxt_zbuffers, RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, RenderContext::cxt_sampleCount);
+	RenderContext::cxt_discardFragment = true;
 
 	camera = cameraCache;
 	fov = fovCache;
@@ -323,9 +324,9 @@ void ShadowMappingScene::renderShadow()
 {
 	RenderContext::clear();
 	camera.update();
-	RenderContext::eyePos = camera.pos;
-	RenderContext::cullMode = CullMode::CULLBACKFACE;
-	RenderContext::vs = m_shadowVS;
+	RenderContext::cxt_eyePos = camera.pos;
+	RenderContext::cxt_cullMode = CullMode::CULLBACKFACE;
+	RenderContext::cxt_VS = m_shadowVS;
 
 	Matrix4 projection;
 	projection = shadowProjection(camera.matrix);
@@ -345,14 +346,14 @@ void ShadowMappingScene::renderScene()
 {
 	RenderContext::clear();
 	camera.update();
-	RenderContext::eyePos   = camera.pos;
-	RenderContext::cullMode = CullMode::CULLBACKFACE;
-	RenderContext::fillMode = FillMode::SOLID;
+	RenderContext::cxt_eyePos   = camera.pos;
+	RenderContext::cxt_cullMode = CullMode::CULLBACKFACE;
+	RenderContext::cxt_fillMode = FillMode::SOLID;
 
-	RenderContext::vs = m_commonVS;
-	RenderContext::ps = m_commonPS;
+	RenderContext::cxt_VS = m_commonVS;
+	RenderContext::cxt_PS = m_commonPS;
 
-	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
+	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
 	m_commonVS->view = camera.matrix;
 	m_commonVS->projection = projection;
 	m_commonVS->vp = projection * camera.matrix;
@@ -472,12 +473,11 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) :
 	MeshFactory::createCube(m_bigBox, 40.f, 40.f, 40.f);
 	MeshFactory::flipMesh(m_bigBox);
 	m_bigBox.material.ambient = { 1.f, 1.f, 0.f };
-	m_bigBox.material.diffuse = { 1.f, 1.f, 0.f };
+	m_bigBox.material.diffuse = { 0.f, 1.f, 1.f };
 	m_bigBox.material.specular = { 0.5f, 0.5f, 0.5f };
 	m_bigBox.material.shininess = 32.f;
 
 	MeshFactory::createCube(m_lightBox, 0.2f, 0.2f, 0.2f);
-	MeshFactory::createSphere(m_transparentSphere, 2.f, 30, 30);
 
 	PointLight* lit = new PointLight;
 	lit->ambient = { 0.2f, 0.2f, 0.2f };
@@ -538,16 +538,13 @@ void PmxModelScene::render()
 
 	RenderContext::clear();
 	camera.update();
-	RenderContext::eyePos = camera.pos;
+	RenderContext::cxt_eyePos = camera.pos;
 
-	RenderContext::vs = m_VS;
-	RenderContext::ps = m_PS;
-
-	
-
+	RenderContext::cxt_VS = m_VS;
+	RenderContext::cxt_PS = m_PS;
 
 	m_VS->world.identity();
-	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
+	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
 	m_PS->light = onlyDrawPmxModel ? nullptr : m_light;
@@ -557,20 +554,18 @@ void PmxModelScene::render()
 	buff.resize(vertexSize);
 	for (int vIndex = 0; vIndex < vertexSize; ++vIndex)
 	{
-		buff[vIndex] = RenderContext::vs->execute(m_model[0].vertices[vIndex]);
+		buff[vIndex] = RenderContext::cxt_VS->execute(m_model[0].vertices[vIndex]);
 	}
-	RenderContext::alphaMode = AlphaMode::ALPHATOCOVERAGE;
-	RenderContext::transparency = 0.5f;
+	RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
+	RenderContext::cxt_transparency = 0.5f;
 	for (int i = 0; i < m_model.size(); ++i)
 	{
 		m_PS->texture = m_model[i].texture.get();
 		drawMesh(m_model[i], (Fragment*)&buff[0]);
 	}
-	RenderContext::alphaMode = AlphaMode::ALPHADISABLE;
-	m_VS->world = Transform::translate(0.f, 15.f, 10.f);
-	m_PS->texture = nullptr;
-	m_PS->material = m_bigBox.material;
-	drawMesh(m_transparentSphere);
+	RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
+	
+	
 	if (onlyDrawPmxModel)
 	{
 		RenderContext::resolve();
@@ -643,13 +638,13 @@ void OceanWaveScene::render()
 	RenderContext::clear();
 	camera.update();
 
-	RenderContext::vs = m_VS;
-	RenderContext::ps = m_PS;
-	RenderContext::eyePos = camera.pos;
+	RenderContext::cxt_VS = m_VS;
+	RenderContext::cxt_PS = m_PS;
+	RenderContext::cxt_eyePos = camera.pos;
 
 	m_VS->world = Transform::scale(0.1f, 0.1f, 0.1f);
 	m_VS->world3 = Matrix4To3(m_VS->world);
-	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::width, RenderContext::height, fov, nearPlane, farPlane);
+	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
 
