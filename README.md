@@ -1,5 +1,5 @@
 # VRenderer
-VRenderer is a simple soft rasterization renderer,for the practice of graphics knowledge.
+VRenderer is a simple soft raster renderer,for the practice of graphics knowledge.
 
 ## Features
 
