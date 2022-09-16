@@ -4,7 +4,19 @@
 #include "Light.h"
 #include "VertexShader.h"
 #include "PixelShader.h"
-#
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Scene
 {
@@ -86,7 +98,7 @@ public:
 private:
 	float m_angle;
 
-	std::vector<Mesh> m_model;
+	std::vector<Mesh> m_character;
 	Mesh m_bigBox;
 	Mesh m_lightBox;
 
@@ -96,6 +108,40 @@ private:
 	PointLight* m_light;
 };
 
+
+class SSAOScene : public Scene 
+{
+public:
+	SSAOScene();
+	~SSAOScene();
+public:
+	virtual void render() override;
+private:
+	void renderGeometry();
+	void renderSSAO();
+	void renderBlur();
+	void lightingPass();
+	void makeNoise();
+private:
+	Texture* m_positions{nullptr};
+	Texture* m_normals{nullptr};
+	DepthTexture* m_depths{nullptr};
+	Texture* m_noise;
+
+	std::vector<Mesh> m_character;
+	Mesh m_ground;
+
+	GenericVertexShader* m_VS{nullptr};
+	GenericPixelShader*  m_PS{nullptr};
+	GBufferPixelShader*  m_gBufferPS{ nullptr };
+	
+
+	DirectionalLight* m_light{nullptr};
+
+
+
+
+};
 
 
 

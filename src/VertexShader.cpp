@@ -36,3 +36,7 @@ Fragment ShadowMapVertexShader::execute(const Vertex& vin)
 	out.posH = vp * posW;
 	return out;
 }
+
+Fragment GBufferVertexShader::execute(const Vertex& vin)
+{
+}

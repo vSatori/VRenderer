@@ -5,19 +5,19 @@
 #include <memory>
 struct Vertex
 {
-	Vector3f pos    { 0.f, 0.f, 0.f };
-	Vector3f normal { 0.f, 0.f, 0.f };
-	Vector2f uv     { 0.f, 0.f };
+	Vector3f pos;
+	Vector3f normal;
+	Vector2f uv;
 };
 
 struct Fragment
 {
-	Vector2f uv{ 0.f, 0.f };
-	Vector3f posM{ 0.f, 0.f, 0.f };
-	Vector3f posW{ 0.f, 0.f, 0.f };
-	Vector3f normalW{ 0.f, 0.f, 0.f };
-	Vector4f posH{ 0.f, 0.f, 0.f, 0.f };
-	Vector4f posD{ 0.f, 0.f, 0.f, 0.f };
+	Vector2f uv;
+	Vector3f posM;
+	Vector3f posW;
+	Vector3f normalW;
+	Vector4f posH;
+	Vector4f posD;
 
 	static const int floatSize = 19;
 

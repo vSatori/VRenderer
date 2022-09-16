@@ -16,6 +16,11 @@ static float computeShadow(const Vector4f& pos, DepthTexture* tex)
 	return shadowFactor / 9.f;
 }
 
+static float LinearizeDepth(float depth)
+{
+	return (2.0 * 0.1f * 50.f) / (50.f + 0.1f - depth * (50.f - 0.1f));
+}
+
 Vector3f GenericPixelShader::execute(const Fragment& fm)
 {
 	Vector3f color{ 0.f, 0.f, 0.f };
@@ -92,4 +97,13 @@ Vector3f OceanWavePixelShader::execute(const Fragment& fm)
 	comnbineColor *= (1.f - specu);
 	comnbineColor += specularFinal;
 	return comnbineColor;
+}
+
+Vector3f GBufferPixelShader::execute(const Fragment& fm)
+{
+	int index = RenderContext::cxt_currentPixelIndex / RenderContext::cxt_sampleCount;
+	positions[index] = fm.posW;
+	normals[index] = fm.normalW;
+	depths[index] = fm.posH.z;
+	return Vector3f();
 }

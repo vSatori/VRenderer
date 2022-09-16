@@ -15,6 +15,99 @@ static void perspectiveDivide(Vector4f& posH)
 	posH.z /= posH.w;
 }
 
+static std::string wstring2string(std::wstring wstr)
+{
+	std::string result;
+	int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+	char* buffer = new char[len + 1];
+	WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buffer, len, NULL, NULL);
+	buffer[len] = '\0';
+	result.append(buffer);
+	delete[] buffer;
+	return result;
+}
+
+static std::wstring string2wstring(std::string sToMatch)
+{
+	int iWLen = MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), 0, 0);
+	wchar_t* lpwsz = new wchar_t[iWLen + 1];
+	MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), lpwsz, iWLen);
+	lpwsz[iWLen] = L'\0';
+	std::wstring wsToMatch(lpwsz);
+	delete[]lpwsz;
+	return wsToMatch;
+}
+
+void loadPmxModel(const std::string& modelpath, std::vector<Mesh>& model)
+{
+	model.clear();
+	const char* filename = modelpath.c_str();
+	int count = modelpath.find_last_of('/');
+	std::wstring prepath = string2wstring(modelpath.substr(0, count));
+	prepath.push_back('/');
+	pmx::PmxModel pmxModel;
+	std::ifstream stream = std::ifstream(filename, std::ios_base::binary);
+	pmxModel.Read(&stream);
+	stream.close();
+	pmx::PmxVertex* pmxvertices = pmxModel.vertices.get();
+	std::vector<Vertex> vertices;
+	vertices.resize(pmxModel.vertex_count);
+	for (int i = 0; i < pmxModel.vertex_count; ++i)
+	{
+		pmx::PmxVertex& pv = pmxvertices[i];
+		Vertex& vertex = vertices[i];
+		memcpy(&vertex.pos, pv.positon, sizeof(float) * 3);
+		memcpy(&vertex.normal, pv.normal, sizeof(float) * 3);
+		memcpy(&vertex.uv, pv.uv, sizeof(float) * 2);
+	}
+	std::vector<Vector3i> indices;
+	indices.resize(pmxModel.index_count / 3);
+	int* pmxindices = pmxModel.indices.get();
+	for (int i = 0; i < pmxModel.index_count / 3; ++i)
+	{
+		Vector3i& index = indices[i];
+		index.x = pmxindices[i * 3 + 0];
+		index.y = pmxindices[i * 3 + 1];
+		index.z = pmxindices[i * 3 + 2];
+	}
+	model.resize(pmxModel.material_count);
+	pmx::PmxMaterial* materials = pmxModel.materials.get();
+	std::wstring* texturePaths = pmxModel.textures.get();
+	std::vector<std::shared_ptr<Texture>> textures;
+	textures.resize(pmxModel.texture_count);
+	for (int i = 0; i < pmxModel.texture_count; ++i)
+	{
+		std::wstring path = prepath + texturePaths[i];
+		textures[i] = std::make_shared<Texture>(wstring2string(path).c_str());
+	}
+	int currentIndx = 0;
+	for (int i = 0; i < pmxModel.material_count; ++i)
+	{
+		auto& material = materials[i];
+		int faceSize = material.index_count / 3;
+		model[i].indices.resize(faceSize);
+		model[i].vertices = vertices;
+		for (int j = 0; j < faceSize; ++j)
+		{
+			model[i].indices[j] = indices[currentIndx + j];
+		}
+		currentIndx += faceSize;
+		model[i].texture = textures[material.diffuse_texture_index];
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 Scene::Scene() : nearPlane(0.1f), farPlane(10.f), fov(90.f)
@@ -386,29 +479,6 @@ Matrix4 ShadowMappingScene::shadowProjection(const Matrix4& matView)
 }
 
 
-static std::string wstring2string(std::wstring wstr)
-{
-	std::string result;
-	int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-	char* buffer = new char[len + 1];
-	WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buffer, len, NULL, NULL);
-	buffer[len] = '\0';
-	result.append(buffer);
-	delete[] buffer;
-	return result;
-}
-
-static std::wstring string2wstring(std::string sToMatch)
-{
-	int iWLen = MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), 0, 0);
-	wchar_t* lpwsz = new wchar_t[iWLen + 1];
-	MultiByteToWideChar(CP_ACP, 0, sToMatch.c_str(), sToMatch.size(), lpwsz, iWLen);
-	lpwsz[iWLen] = L'\0';
-	std::wstring wsToMatch(lpwsz);
-	delete[]lpwsz;
-	return wsToMatch;
-}
-
 PmxModelScene::PmxModelScene(const std::string& modelpath) : 
 	onlyDrawPmxModel(false),
 	m_angle(0.f),
@@ -416,59 +486,7 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) :
 	m_PS   (nullptr),
 	m_light(nullptr)
 {
-	const char* filename = modelpath.c_str();
-	int count = modelpath.find_last_of('/');
-	std::wstring prepath = string2wstring(modelpath.substr(0, count));
-	prepath.push_back('/');
-	pmx::PmxModel model;
-	std::ifstream stream = std::ifstream(filename, std::ios_base::binary);
-	model.Read(&stream);
-	stream.close();
-	pmx::PmxVertex* pmxvertices = model.vertices.get();
-	std::vector<Vertex> vertices;
-	vertices.resize(model.vertex_count);
-	for (int i = 0; i < model.vertex_count; ++i)
-	{
-		pmx::PmxVertex& pv = pmxvertices[i];
-		Vertex& vertex = vertices[i];
-		memcpy(&vertex.pos, pv.positon, sizeof(float) * 3);
-		memcpy(&vertex.normal, pv.normal, sizeof(float) * 3);
-		memcpy(&vertex.uv, pv.uv, sizeof(float) * 2);
-	}
-	std::vector<Vector3i> indices;
-	indices.resize(model.index_count / 3);
-	int* pmxindices = model.indices.get();
-	for (int i = 0; i < model.index_count / 3; ++i)
-	{
-		Vector3i& index = indices[i];
-		index.x = pmxindices[i * 3 + 0];
-		index.y = pmxindices[i * 3 + 1];
-		index.z = pmxindices[i * 3 + 2];
-	}
-	m_model.resize(model.material_count);
-	pmx::PmxMaterial* materials = model.materials.get();
-	std::wstring* texturePaths = model.textures.get();
-	std::vector<std::shared_ptr<Texture>> textures;
-	textures.resize(model.texture_count);
-	for (int i = 0; i < model.texture_count; ++i)
-	{
-		std::wstring path = prepath + texturePaths[i];
-		textures[i] = std::make_shared<Texture>(wstring2string(path).c_str());
-	}
-	int currentIndx = 0;
-	for (int i = 0; i < model.material_count; ++i)
-	{
-		auto& material = materials[i];
-		int faceSize = material.index_count / 3;
-		m_model[i].indices.resize(faceSize);
-		m_model[i].vertices = vertices;
-		for (int j = 0; j < faceSize; ++j)
-		{
-			m_model[i].indices[j] = indices[currentIndx + j];
-		}
-		currentIndx += faceSize;
-		m_model[i].texture = textures[material.diffuse_texture_index];
-	}
+	loadPmxModel(modelpath, m_character);
 
 	MeshFactory::createCube(m_bigBox, 40.f, 40.f, 40.f);
 	MeshFactory::flipMesh(m_bigBox);
@@ -549,19 +567,19 @@ void PmxModelScene::render()
 	m_VS->vp = m_VS->projection * m_VS->view;
 	m_PS->light = onlyDrawPmxModel ? nullptr : m_light;
 
-	int vertexSize = m_model[0].vertices.size();
+	int vertexSize = m_character[0].vertices.size();
 	std::vector<Fragment> buff;
 	buff.resize(vertexSize);
 	for (int vIndex = 0; vIndex < vertexSize; ++vIndex)
 	{
-		buff[vIndex] = RenderContext::cxt_VS->execute(m_model[0].vertices[vIndex]);
+		buff[vIndex] = RenderContext::cxt_VS->execute(m_character[0].vertices[vIndex]);
 	}
 	RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
 	RenderContext::cxt_transparency = 0.5f;
-	for (int i = 0; i < m_model.size(); ++i)
+	for (int i = 0; i < m_character.size(); ++i)
 	{
-		m_PS->texture = m_model[i].texture.get();
-		drawMesh(m_model[i], (Fragment*)&buff[0]);
+		m_PS->texture = m_character[i].texture.get();
+		drawMesh(m_character[i], (Fragment*)&buff[0]);
 	}
 	RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
 	
@@ -658,4 +676,56 @@ void OceanWaveScene::generateWave()
 	m_wave->update(m_time);
 	m_PS->maxHeight = m_wave->maxHeight * 0.1f;
 	m_PS->minHeight = m_wave->minHeight * 0.1f;
+}
+
+SSAOScene::SSAOScene()
+{
+	m_positions = new Texture;
+	m_normals = new Texture;
+	m_depths = new DepthTexture;
+
+	std::string pmxpath = g_resourcePath + "bachong/°ËÖØÉñ×Ó.pmx";
+	loadPmxModel(pmxpath, m_character);
+
+	MeshFactory::createCube(m_ground, 40.f, 2.f, 40.f);
+	m_ground.material.ambient = { 1.f, 1.f, 0.f };
+	m_ground.material.diffuse = { 0.f, 1.f, 1.f };
+	m_ground.material.specular = { 0.5f, 0.5f, 0.5f };
+	m_ground.material.shininess = 32.f;
+
+	m_VS = new GenericVertexShader;
+	m_PS = new GenericPixelShader;
+
+	DirectionalLight* light = new DirectionalLight;
+	light->ambient = { 0.2f, 0.2f, 0.2f };
+	light->diffuse = { 0.5f, 0.5f, 0.5f };
+	light->specular = { 1.f, 1.f, 1.f };
+	light->direction = { 0.f, -1.f, 1.f };
+	light->pos = { 0.f, 100.f, -100.f };
+	light->direction.normalize();
+	m_light = light;
+
+	camera.useSphereMode = true;
+	camera.pitch = 0.f;
+	camera.yaw = -90.f;
+	camera.radius = 20;
+	camera.target = { 0.f, 10.f, 0.f };
+	fov = 75.f;
+
+	nearPlane = 1.f;
+	farPlane = 1000.f;
+}
+
+void SSAOScene::makeNoise()
+{
+	std::uniform_real_distribution<float> randoms(0.0, 1.0);
+	std::default_random_engine generator;
+	std::vector<Vector3f> noises;
+	noises.resize(16);
+	for (int i = 0; i < 16; ++i)
+	{
+		Vector3f noise(randoms(generator) * 2.0 - 1.0, randoms(generator) * 2.0 - 1.0, 0.0f);
+		noises[i] = noise;
+	}
+	
 }

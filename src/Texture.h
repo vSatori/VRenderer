@@ -5,6 +5,30 @@
 #include <map>
 #include <memory>
 
+template<typename T, int comp>
+class Texture2D
+{
+public:
+	Texture2D();
+	~Texture2D();
+public:
+	void setRowData(T* data, int width, int height);
+	T* sample(float u, float v);
+	T  sample0(float u, float v);
+private:
+	T* m_rowData{nullptr};
+	T m_tuple[comp];
+	int m_components{ comp };
+	int m_width{0};
+	int m_height{0};
+	int m_maxWidthIndex{0};
+	int m_maxHeightIndex{0};
+};
+
+
+
+
+
 class Texture
 {
 public:

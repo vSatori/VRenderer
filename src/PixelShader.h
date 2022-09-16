@@ -18,12 +18,10 @@ class GenericPixelShader : public PixelShader
 public:
 	virtual Vector3f execute(const Fragment& fm);
 public:
-	float alpha = 1.f;
-	Vector3f color; 
 	Material material;
-	Texture* texture = nullptr;
-	Light* light = nullptr;
-	DepthTexture* depthTexture = nullptr;
+	Texture* texture{nullptr};
+	Light* light{nullptr};
+	DepthTexture* depthTexture{nullptr};
 };
 
 class SkyPixelShader : public PixelShader
@@ -31,7 +29,7 @@ class SkyPixelShader : public PixelShader
 public:
 	virtual Vector3f execute(const Fragment& fm);
 public:
-	CubeMap* cubeMap = nullptr;
+	CubeMap* cubeMap{nullptr};
 };
 
 class ReflectPixelShader : public PixelShader
@@ -39,7 +37,17 @@ class ReflectPixelShader : public PixelShader
 public:
 	virtual Vector3f execute(const Fragment& fm);
 public:
-	CubeMap* envCubeMap = nullptr;
+	CubeMap* envCubeMap {nullptr};
+};
+
+class GBufferPixelShader : public PixelShader
+{
+public:
+	virtual Vector3f execute(const Fragment& fm);
+public:
+	Vector3f* positions;
+	Vector3f* normals;
+	float* depths;
 };
 
 
