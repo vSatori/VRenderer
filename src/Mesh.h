@@ -18,6 +18,7 @@ struct Fragment
 	Vector3f normalW;
 	Vector4f posH;
 	Vector4f posD;
+	
 
 	static const int floatSize = 19;
 
@@ -50,7 +51,8 @@ struct Mesh
 {
 	std::vector<Vertex> vertices;
 	std::vector<Vector3i> indices;
-	std::shared_ptr<Texture> texture;
+	//std::shared_ptr<Texture> texture;
+	std::shared_ptr<Texture1i> texture;
 	Material material;
 };
 

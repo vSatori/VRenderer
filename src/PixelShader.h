@@ -19,10 +19,10 @@ public:
 	virtual Vector3f execute(const Fragment& fm);
 public:
 	Material material;
-	Texture* texture{nullptr};
+	Texture1i* texture{nullptr};
 	Light* light{nullptr};
-	DepthTexture* depthTexture{nullptr};
-};
+	TextureBase<float>* depthTexture{ nullptr };
+}; 
 
 class SkyPixelShader : public PixelShader
 {
@@ -40,17 +40,6 @@ public:
 	CubeMap* envCubeMap {nullptr};
 };
 
-class GBufferPixelShader : public PixelShader
-{
-public:
-	virtual Vector3f execute(const Fragment& fm);
-public:
-	Vector3f* positions;
-	Vector3f* normals;
-	float* depths;
-};
-
-
 class OceanWavePixelShader : public PixelShader
 {
 public:
@@ -58,7 +47,7 @@ public:
 public:
 	float maxHeight;
 	float minHeight;
-	DirectionalLight* light;
+	DirectionalLight* light{nullptr};
 };
 
 

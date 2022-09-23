@@ -15,7 +15,8 @@ std::string getResouecePath(HINSTANCE ins)
 	path.replace(index + 1, path.size() - index, "");
 	return path + "../../resources/";
 }
-#include "Transform.h"
+
+
 int main(int argc, char** argv)
 {
 	auto ins = GetModuleHandle(nullptr);

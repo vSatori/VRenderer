@@ -35,6 +35,8 @@ enum class Side
 	POSX,NEGX,POSY,NEGY,POSZ,NEGZ,W
 };
 
+#define FW RenderContext::cxt_frameWidth
+#define FH RenderContext::cxt_frameHeight
 
 class RenderContext
 {

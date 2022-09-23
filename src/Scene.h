@@ -7,17 +7,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 class Scene
 {
 public:
@@ -81,7 +70,7 @@ private:
 	ShadowMapVertexShader* m_shadowVS;
 
 	DirectionalLight*      m_light;
-	DepthTexture*          m_depthTexture;
+	TextureBase<float> *   m_depthTexture;
 	Matrix4                m_lightWorld;
 	Vector3f               m_lightPosition;
 };
@@ -107,45 +96,6 @@ private:
 	
 	PointLight* m_light;
 };
-
-
-class SSAOScene : public Scene 
-{
-public:
-	SSAOScene();
-	~SSAOScene();
-public:
-	virtual void render() override;
-private:
-	void renderGeometry();
-	void renderSSAO();
-	void renderBlur();
-	void lightingPass();
-	void makeNoise();
-private:
-	Texture* m_positions{nullptr};
-	Texture* m_normals{nullptr};
-	DepthTexture* m_depths{nullptr};
-	Texture* m_noise;
-
-	std::vector<Mesh> m_character;
-	Mesh m_ground;
-
-	GenericVertexShader* m_VS{nullptr};
-	GenericPixelShader*  m_PS{nullptr};
-	GBufferPixelShader*  m_gBufferPS{ nullptr };
-	
-
-	DirectionalLight* m_light{nullptr};
-
-
-
-
-};
-
-
-
-
 
 
 

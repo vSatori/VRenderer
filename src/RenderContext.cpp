@@ -26,7 +26,7 @@ FillMode RenderContext::cxt_fillMode = FillMode::SOLID;
 DepthMode RenderContext::cxt_depthMode = DepthMode::LESS;
 AlphaMode RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
 float RenderContext::cxt_transparency = 1.f;
-bool RenderContext::cxt_discardFragment = true;
+bool RenderContext::cxt_discardFragment = false;
 bool RenderContext::cxt_clockwiseOrder = true;
 unsigned int* RenderContext::cxt_renderTarget = nullptr;
 bool* RenderContext::cxt_pixelMask = nullptr;
@@ -339,33 +339,32 @@ void RenderContext::drawFragment(const Fragment & fm1, const Fragment & fm2, con
 				{
 					continue;
 				}
-				if (!cxt_discardFragment)
-				{
-					continue;
-				}
-				
 				if (!coveraged)
 				{
-					cxt_currentSampleIndex = index;
-					a /= fm1.posH.w;
-					b /= fm2.posH.w;
-					c /= fm3.posH.w;
-					float rw = 1.f / (a + b + c);
-					
-					for (int i = 0; i < Fragment::floatSize; ++i)
+					if (!cxt_discardFragment)
 					{
-						pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * rw;
-					}
-					sampleColor = cxt_PS->execute(frag);
-					
-					float* pc = (float*)&sampleColor;
-					for (int i = 0; i < 3; ++i)
-					{
-						if (pc[i] > 1.f)
+						cxt_currentSampleIndex = index;
+						a /= fm1.posH.w;
+						b /= fm2.posH.w;
+						c /= fm3.posH.w;
+						float rw = 1.f / (a + b + c);
+
+						for (int i = 0; i < Fragment::floatSize; ++i)
 						{
-							pc[i] = 1.f;
+							pfm[i] = (pfm1[i] * a + pfm2[i] * b + pfm3[i] * c) * rw;
+						}
+						sampleColor = cxt_PS->execute(frag);
+
+						float* pc = (float*)&sampleColor;
+						for (int i = 0; i < 3; ++i)
+						{
+							if (pc[i] > 1.f)
+							{
+								pc[i] = 1.f;
+							}
 						}
 					}
+					
 					coveraged = true;
 				}
 				g_sampleMasks[index] = 1;

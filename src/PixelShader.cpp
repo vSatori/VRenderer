@@ -3,30 +3,33 @@
 static float g_offset = 1.f / 1000.f;
 static Vector2f g_shadowSamplePts[]{ {-g_offset, -g_offset}, {-g_offset, g_offset}, {g_offset, -g_offset}, {g_offset, g_offset},{0.f, 0.f},{0.f, -g_offset}, { 0.f, g_offset}, {g_offset, 0.f}, {-g_offset, 0.f} };
 
-static float computeShadow(const Vector4f& pos, DepthTexture* tex)
+static float computeShadow(const Vector4f& pos, TextureBase<float>* tex)
 {
 	float x = (pos.x + 1.f) * 0.5f;
 	float y = (1.f - pos.y) * 0.5f;
 	float shadowFactor = 0.f;
 	for (int i = 0; i < 9; ++i)
 	{
-		float depth = tex->sample(x + g_shadowSamplePts[i].x, y + g_shadowSamplePts[i].y, RenderContext::cxt_currentSampleIndex);
+		float* p = tex->sample(x + g_shadowSamplePts[i].x, y + g_shadowSamplePts[i].y);
+		float depth = p[RenderContext::cxt_currentSampleIndex];
 		shadowFactor += pos.z - 0.05f < depth ? 1.f : 0.f;
 	}
 	return shadowFactor / 9.f;
 }
 
-static float LinearizeDepth(float depth)
+static float smoothStep(float t1, float t2, float x) 
 {
-	return (2.0 * 0.1f * 50.f) / (50.f + 0.1f - depth * (50.f - 0.1f));
+	x = clamp(0.f, 1.f, (x - t1) / (t2 - t1));
+	return x * x * (3.f - 2.f * x);
 }
+
 
 Vector3f GenericPixelShader::execute(const Fragment& fm)
 {
 	Vector3f color{ 0.f, 0.f, 0.f };
 	if (texture)
 	{
-		color = bgr2Vector(texture->sample(fm.uv.x, fm.uv.y));
+		color = bgr2Vector(texture->sample0(fm.uv.x, fm.uv.y));
 		material.diffuse = color;
 		material.ambient = color;
 	}
@@ -41,7 +44,8 @@ Vector3f GenericPixelShader::execute(const Fragment& fm)
 		{
 			shadow = computeShadow(fm.posD, depthTexture);
 		}
-		color = light->compute(RenderContext::cxt_eyePos, fm.posW, fm.normalW, material, shadow);
+		light->compute(RenderContext::cxt_eyePos, fm.posW, fm.normalW, material);
+		color = light->computedAmbient + light->computedDiffuse * shadow + light->computedSpecular * shadow;
 	}
 	if (RenderContext::cxt_alphaMode != AlphaMode::ALPHABLENDING)
 	{
@@ -97,13 +101,4 @@ Vector3f OceanWavePixelShader::execute(const Fragment& fm)
 	comnbineColor *= (1.f - specu);
 	comnbineColor += specularFinal;
 	return comnbineColor;
-}
-
-Vector3f GBufferPixelShader::execute(const Fragment& fm)
-{
-	int index = RenderContext::cxt_currentPixelIndex / RenderContext::cxt_sampleCount;
-	positions[index] = fm.posW;
-	normals[index] = fm.normalW;
-	depths[index] = fm.posH.z;
-	return Vector3f();
 }

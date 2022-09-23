@@ -6,6 +6,8 @@
 #include "Transform.h"
 #include "MikuMikuFormats/Pmx.h"
 
+#define PERSPECTIVEMAT Matrix4::perspectiveProjection(FW, FH, fov, nearPlane, farPlane)
+
 extern std::string g_resourcePath;
 
 static void perspectiveDivide(Vector4f& posH)
@@ -38,7 +40,7 @@ static std::wstring string2wstring(std::string sToMatch)
 	return wsToMatch;
 }
 
-void loadPmxModel(const std::string& modelpath, std::vector<Mesh>& model)
+static void loadPmxModel(const std::string& modelpath, std::vector<Mesh>& model)
 {
 	model.clear();
 	const char* filename = modelpath.c_str();
@@ -73,12 +75,14 @@ void loadPmxModel(const std::string& modelpath, std::vector<Mesh>& model)
 	model.resize(pmxModel.material_count);
 	pmx::PmxMaterial* materials = pmxModel.materials.get();
 	std::wstring* texturePaths = pmxModel.textures.get();
-	std::vector<std::shared_ptr<Texture>> textures;
+	std::vector<std::shared_ptr<Texture1i>> textures;
 	textures.resize(pmxModel.texture_count);
 	for (int i = 0; i < pmxModel.texture_count; ++i)
 	{
 		std::wstring path = prepath + texturePaths[i];
-		textures[i] = std::make_shared<Texture>(wstring2string(path).c_str());
+		//textures[i] = std::make_shared<Texture>(wstring2string(path).c_str());
+		textures[i] = std::make_shared<Texture1i>();
+		loadTexutre(wstring2string(path).c_str(), textures[i].get());
 	}
 	int currentIndx = 0;
 	for (int i = 0; i < pmxModel.material_count; ++i)
@@ -93,6 +97,35 @@ void loadPmxModel(const std::string& modelpath, std::vector<Mesh>& model)
 		}
 		currentIndx += faceSize;
 		model[i].texture = textures[material.diffuse_texture_index];
+	}
+}
+
+static void generateDepthTexture(TextureBase<float>** texture)
+{
+	switch (RenderContext::cxt_msaaLevel)
+	{
+	case MSAALevel::MSAA0X:
+	{
+		*texture = new Texture<float, 1>;
+		break;
+	}
+	case MSAALevel::MSAA2X:
+	{
+		*texture = new Texture<float, 2>;
+		break;
+	}
+	case MSAALevel::MSAA4X:
+	{
+		*texture = new Texture<float, 4>;
+		break;
+	}
+	case MSAALevel::MSAA8X:
+	{
+		*texture = new Texture<float, 8>;
+		break;
+	}
+	default:
+		break;
 	}
 }
 
@@ -265,11 +298,11 @@ void DynamicEnviromentMappingScene::render()
 	};
 	for (int i = 0; i < 6; ++i)
 	{
-		unsigned int* buff = new unsigned int[RenderContext::cxt_frameWidth * RenderContext::cxt_frameHeight];
+		unsigned int* buff = new unsigned int[FW * FH];
 		RenderContext::cxt_renderTarget = buff;
 		camera.target = targets[i];
 		render(false);
-		m_envCubeMap->setRowData(static_cast<CubeMap::Direction>(i), buff, RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight);
+		m_envCubeMap->setRowData(static_cast<CubeMap::Direction>(i), buff, FW, FH);
 		delete[] buff;
 	}
 	
@@ -287,7 +320,7 @@ void DynamicEnviromentMappingScene::render(bool drawRelect)
 	RenderContext::cxt_eyePos = camera.pos;
 	RenderContext::cxt_cullMode = CullMode::CULLBACKFACE;
 	Matrix4 world;
-	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
+	Matrix4 projection = PERSPECTIVEMAT;
 
 	m_commonVS->view = camera.matrix;
 	m_commonVS->projection = projection;
@@ -350,7 +383,8 @@ ShadowMappingScene::ShadowMappingScene() :
 	light->pos       = { 0.f, 100.f, -100.f };
 	m_light = light;
 	
-	m_depthTexture = new DepthTexture;
+	generateDepthTexture(&m_depthTexture);
+	//m_depthTexture = new DepthTexture;
 	
 	m_commonVS = new GenericVertexShader;
 	m_commonPS = new GenericPixelShader;
@@ -400,10 +434,10 @@ void ShadowMappingScene::render()
 	camera.pos = m_light->pos;
 	camera.useSphereMode = false;
 
-	RenderContext::cxt_discardFragment = false;
-	renderShadow();
-	m_depthTexture->setRowData(RenderContext::cxt_zbuffers, RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, RenderContext::cxt_sampleCount);
 	RenderContext::cxt_discardFragment = true;
+	renderShadow();
+	m_depthTexture->setRowData(RenderContext::cxt_zbuffers, FW, FH);
+	RenderContext::cxt_discardFragment = false;
 
 	camera = cameraCache;
 	fov = fovCache;
@@ -446,7 +480,7 @@ void ShadowMappingScene::renderScene()
 	RenderContext::cxt_VS = m_commonVS;
 	RenderContext::cxt_PS = m_commonPS;
 
-	Matrix4 projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
+	Matrix4 projection = PERSPECTIVEMAT;
 	m_commonVS->view = camera.matrix;
 	m_commonVS->projection = projection;
 	m_commonVS->vp = projection * camera.matrix;
@@ -562,7 +596,7 @@ void PmxModelScene::render()
 	RenderContext::cxt_PS = m_PS;
 
 	m_VS->world.identity();
-	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
+	m_VS->projection = PERSPECTIVEMAT;
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
 	m_PS->light = onlyDrawPmxModel ? nullptr : m_light;
@@ -574,14 +608,12 @@ void PmxModelScene::render()
 	{
 		buff[vIndex] = RenderContext::cxt_VS->execute(m_character[0].vertices[vIndex]);
 	}
-	RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
-	RenderContext::cxt_transparency = 0.5f;
+
 	for (int i = 0; i < m_character.size(); ++i)
 	{
 		m_PS->texture = m_character[i].texture.get();
 		drawMesh(m_character[i], (Fragment*)&buff[0]);
 	}
-	RenderContext::cxt_alphaMode = AlphaMode::ALPHADISABLE;
 	
 	
 	if (onlyDrawPmxModel)
@@ -662,7 +694,7 @@ void OceanWaveScene::render()
 
 	m_VS->world = Transform::scale(0.1f, 0.1f, 0.1f);
 	m_VS->world3 = Matrix4To3(m_VS->world);
-	m_VS->projection = Matrix4::perspectiveProjection(RenderContext::cxt_frameWidth, RenderContext::cxt_frameHeight, fov, nearPlane, farPlane);
+	m_VS->projection = PERSPECTIVEMAT;
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
 
@@ -676,56 +708,4 @@ void OceanWaveScene::generateWave()
 	m_wave->update(m_time);
 	m_PS->maxHeight = m_wave->maxHeight * 0.1f;
 	m_PS->minHeight = m_wave->minHeight * 0.1f;
-}
-
-SSAOScene::SSAOScene()
-{
-	m_positions = new Texture;
-	m_normals = new Texture;
-	m_depths = new DepthTexture;
-
-	std::string pmxpath = g_resourcePath + "bachong/°ËÖØÉñ×Ó.pmx";
-	loadPmxModel(pmxpath, m_character);
-
-	MeshFactory::createCube(m_ground, 40.f, 2.f, 40.f);
-	m_ground.material.ambient = { 1.f, 1.f, 0.f };
-	m_ground.material.diffuse = { 0.f, 1.f, 1.f };
-	m_ground.material.specular = { 0.5f, 0.5f, 0.5f };
-	m_ground.material.shininess = 32.f;
-
-	m_VS = new GenericVertexShader;
-	m_PS = new GenericPixelShader;
-
-	DirectionalLight* light = new DirectionalLight;
-	light->ambient = { 0.2f, 0.2f, 0.2f };
-	light->diffuse = { 0.5f, 0.5f, 0.5f };
-	light->specular = { 1.f, 1.f, 1.f };
-	light->direction = { 0.f, -1.f, 1.f };
-	light->pos = { 0.f, 100.f, -100.f };
-	light->direction.normalize();
-	m_light = light;
-
-	camera.useSphereMode = true;
-	camera.pitch = 0.f;
-	camera.yaw = -90.f;
-	camera.radius = 20;
-	camera.target = { 0.f, 10.f, 0.f };
-	fov = 75.f;
-
-	nearPlane = 1.f;
-	farPlane = 1000.f;
-}
-
-void SSAOScene::makeNoise()
-{
-	std::uniform_real_distribution<float> randoms(0.0, 1.0);
-	std::default_random_engine generator;
-	std::vector<Vector3f> noises;
-	noises.resize(16);
-	for (int i = 0; i < 16; ++i)
-	{
-		Vector3f noise(randoms(generator) * 2.0 - 1.0, randoms(generator) * 2.0 - 1.0, 0.0f);
-		noises[i] = noise;
-	}
-	
 }

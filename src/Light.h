@@ -9,11 +9,14 @@ using LightFunction = std::function<Vector3f(const Vector3f&, const Vector3f&, c
 class Light
 {
 public:
-	virtual Vector3f compute(const Vector3f& eye, 
+	virtual void compute(const Vector3f& eye, 
 		const Vector3f& vertexPos,
 		const Vector3f& normal, 
-		const Material& material, 
-		float shadow) = 0;
+		const Material& material) = 0;
+public:
+	Vector3f computedAmbient;
+	Vector3f computedDiffuse;
+	Vector3f computedSpecular;
 public:
 	Vector3f ambient;
 	Vector3f diffuse;
@@ -24,11 +27,10 @@ public:
 class DirectionalLight : public Light
 {
 public:
-	virtual Vector3f compute(const Vector3f& eye, 
+	virtual void compute(const Vector3f& eye, 
 		const Vector3f& vertexPos, 
 		const Vector3f& normal, 
-		const Material& material, 
-		float shadow);
+		const Material& material);
 public:
 	Vector3f direction;
 };
@@ -36,11 +38,10 @@ public:
 class PointLight : public Light
 {
 public:
-	virtual Vector3f compute(const Vector3f& eye, 
+	virtual void compute(const Vector3f& eye, 
 		const Vector3f& vertexPos, 
 		const Vector3f& normal, 
-		const Material& material, 
-		float shadow);
+		const Material& material);
 public:
 	float constant;
 	float linear;
@@ -51,11 +52,10 @@ public:
 class SpotLight : public Light
 {
 public:
-	virtual Vector3f compute(const Vector3f& eye,
+	virtual void compute(const Vector3f& eye,
 		const Vector3f& vertexPos, 
 		const Vector3f& normal,
-		const Material& material, 
-		float shadow);
+		const Material& material);
 public:
 	float constant;
 	float linear;

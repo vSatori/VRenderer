@@ -35,11 +35,4 @@ public:
 	virtual Fragment execute(const Vertex& vin);
 };
 
-class GBufferVertexShader : public VertexShader
-{
-public:
-	virtual Fragment execute(const Vertex& vin);
-private:
-	Matrix4 wv;
-};
 

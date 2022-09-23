@@ -103,7 +103,7 @@ int RenderView::run()
 				dfps = 0;
 			}
 			auto s = GetTickCount64();
-			renderScene();
+			renderScene();		
 			std::string txt = "fps: ";
 			txt	+= std::to_string(fps);
 			TextOut(m_wndc, 30, 30, txt.c_str(), txt.size());

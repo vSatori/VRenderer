@@ -90,6 +90,7 @@ struct Vector3
 {
 public:
 	Vector3() {}
+	Vector3(T* v) : x(v[0]), y(v[1]), z(v[2]) {}
 	Vector3(T x, T y, T z) : x(x), y(y), z(z) {}
 public:
 	inline T length()const
@@ -210,7 +211,7 @@ public:
 public:
 	T x{ T() };
 	T y{ T() };
-	T z{ T()};
+	T z{ T() };
 };
 
 using Vector3i = Vector3<int>;
@@ -608,6 +609,15 @@ inline T findMin(T v1, T v2, T v3)
 	return v3;
 }
 
+inline Matrix3 makeTBN(const Vector3f& t, const Vector3f& b, const Vector3f& n)
+{
+	Matrix3 mat;
+	int size = sizeof(t);
+	memcpy(mat.m[0], &t, size);
+	memcpy(mat.m[1], &b, size);
+	memcpy(mat.m[2], &n, size);
+	return mat;
+}
 
 inline Vector3f bgr2Vector(unsigned int value)
 {
@@ -635,4 +645,6 @@ inline unsigned int colorValue(const Vector3f& color)
 	return (red << 16) + (green << 8) + blue;
 
 }
+
+
 
