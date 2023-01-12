@@ -80,7 +80,6 @@ static void loadPmxModel(const std::string& modelpath, std::vector<Mesh>& model)
 	for (int i = 0; i < pmxModel.texture_count; ++i)
 	{
 		std::wstring path = prepath + texturePaths[i];
-		//textures[i] = std::make_shared<Texture>(wstring2string(path).c_str());
 		textures[i] = std::make_shared<Texture1i>();
 		loadTexutre(wstring2string(path).c_str(), textures[i].get());
 	}
@@ -384,7 +383,6 @@ ShadowMappingScene::ShadowMappingScene() :
 	m_light = light;
 	
 	generateDepthTexture(&m_depthTexture);
-	//m_depthTexture = new DepthTexture;
 	
 	m_commonVS = new GenericVertexShader;
 	m_commonPS = new GenericPixelShader;
@@ -395,6 +393,7 @@ ShadowMappingScene::ShadowMappingScene() :
 
 	camera.useSphereMode = true;
 	camera.radius = 10.f;
+	camera.pitch = 15.f;
 	camera.pos = { 0.f, 0.f, -5.f };
 	camera.target = { 0.f, 0.f, 0.f };
 
@@ -452,7 +451,6 @@ void ShadowMappingScene::renderShadow()
 	RenderContext::clear();
 	camera.update();
 	RenderContext::cxt_eyePos = camera.pos;
-	RenderContext::cxt_cullMode = CullMode::CULLBACKFACE;
 	RenderContext::cxt_VS = m_shadowVS;
 
 	Matrix4 projection;
@@ -474,8 +472,6 @@ void ShadowMappingScene::renderScene()
 	RenderContext::clear();
 	camera.update();
 	RenderContext::cxt_eyePos   = camera.pos;
-	RenderContext::cxt_cullMode = CullMode::CULLBACKFACE;
-	RenderContext::cxt_fillMode = FillMode::SOLID;
 
 	RenderContext::cxt_VS = m_commonVS;
 	RenderContext::cxt_PS = m_commonPS;
@@ -683,7 +679,7 @@ OceanWaveScene::~OceanWaveScene()
 
 void OceanWaveScene::render()
 {
-	m_time += 0.1;
+	m_time += 0.1f;
 	generateWave();
 	RenderContext::clear();
 	camera.update();

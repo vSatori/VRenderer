@@ -20,11 +20,11 @@ public:
 	Vector3f pos;
 	Vector3f target;
 	Vector3f up;
-	float radius;
 	Matrix4 matrix;
-	float yaw;
-	float pitch;
-	bool useSphereMode;
+	float radius{1.f};
+	float yaw{0.f};
+	float pitch{0.f};
+	bool useSphereMode{true};
 
 };
 

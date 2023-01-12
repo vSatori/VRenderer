@@ -407,7 +407,7 @@ void RenderContext::resolve()
 		{
 			color += cxt_pixelColors[i + j];
 		}
-		cxt_renderTarget[i / cxt_sampleCount] = colorValue(color / cxt_sampleCount);
+		cxt_renderTarget[i / cxt_sampleCount] = colorValue(color / static_cast<float>(cxt_sampleCount));
 	}
 }
 void RenderContext::drawLine(int x1, int y1, int x2, int y2)
