@@ -29,7 +29,7 @@ VRenderer is a simple soft raster renderer,for the practice of graphics knowledg
 - MSAA
 
 ![](https://github.com/vSatori/VRenderer/blob/main/screenshots/nomsaa.png)
-![](https://github.com/vSatori/VRenderer/blob/main/screenshots/mass8x.png)
+![](https://github.com/vSatori/VRenderer/blob/main/screenshots/msaa8x.png)
 
                                                 No MSAA & MSAA8X
 
