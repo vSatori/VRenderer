@@ -193,7 +193,6 @@ LRESULT RenderView::ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		if (fov >= 1.0f && fov <= 90.0f)
 		{
 			fov -= (float)GET_WHEEL_DELTA_WPARAM(wParam) * 0.05f;
-			return 0;
 		}
 
 		if (fov <= 1.0f)
@@ -205,6 +204,7 @@ LRESULT RenderView::ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		{
 			fov = 90.0f;
 		}
+
 		return 0;
 	}
 	default:

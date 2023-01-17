@@ -72,30 +72,18 @@ Vector3f OceanWavePixelShader::execute(const Fragment& fm)
 {
 	Vector3f shallowColor{ 0.f, 0.64f, 0.68f };
 	Vector3f deepColor{ 0.02f, 0.05f, 0.1f };
-	float diff = fm.posW.y - minHeight;
-	float height = (diff) / (maxHeight - minHeight);
-
-	Vector3f heightColor = shallowColor * height + deepColor * (1 - height);
-
+	float height = (fm.posW.y - minHeight) / (maxHeight - minHeight);
+	Vector3f heightColor = shallowColor * height + deepColor * (1.f - height);
 	Vector3f viewDir = RenderContext::cxt_eyePos - fm.posW;
 	viewDir.normalize();
-
 	Vector3f skyColor{ 0.65f, 0.8f, 0.95f };
 	float refCoeff = powf(std::max(fm.normalW.dot(viewDir), 0.f), 0.3f);
 	Vector3f reflectColor = skyColor * (1.f - refCoeff);
-
 	Vector3f litDir = light->pos - fm.posW;
 	Vector3f reflectDir = (litDir * -1).reflect(fm.normalW);
 	reflectDir.normalize();
-	float specu = powf(std::max(viewDir.dot(reflectDir), 0.f), 32.f) * 3;
-	if (specu > 1.f)
-	{
-		specu = 1.f;
-	}
-	else if (specu < 0.f)
-	{
-		specu = 0.f;
-	}
+	float specu = powf(std::max(viewDir.dot(reflectDir), 0.f), 32.f) * 3.f;
+	specu = clamp(0.f, 1.f, specu);
 	Vector3f specularFinal = light->specular * specu;
 	Vector3f comnbineColor = reflectColor + heightColor;
 	comnbineColor *= (1.f - specu);

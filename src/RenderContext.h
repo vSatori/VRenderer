@@ -79,7 +79,7 @@ public:
 	static void drawLine(int x1, int y1, int x2, int y2);
 	static void resolve();
 	
-	
+
 	static std::vector<Fragment> sutherlandHodgemanClipping(const Fragment& fm1, const Fragment& fm2, const Fragment& fm3);
 	static Fragment clipPlane(const Fragment& fm1, const Fragment& fm2, Side side);
 	static Fragment clipWPlane(const Fragment& fm1, const Fragment& fm2);

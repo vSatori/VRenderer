@@ -509,8 +509,8 @@ Matrix4 ShadowMappingScene::shadowProjection(const Matrix4& matView)
 }
 
 
-PmxModelScene::PmxModelScene(const std::string& modelpath) : 
-	onlyDrawPmxModel(false),
+PmxModelScene::PmxModelScene(const std::string& modelpath, bool useLight) : 
+	m_useLight(useLight),
 	m_angle(0.f),
 	m_VS   (nullptr),
 	m_PS   (nullptr),
@@ -541,7 +541,7 @@ PmxModelScene::PmxModelScene(const std::string& modelpath) :
 	camera.useSphereMode = true;
 	camera.pitch = 0.f;
 	camera.yaw = -90.f;
-	camera.radius = 20;
+	camera.radius = 30;
 	camera.target = { 0.f, 10.f, 0.f };
 	fov = 75.f;
 
@@ -568,7 +568,7 @@ void PmxModelScene::render()
 	if (m_angle > 180)
 	{
 		m_light->diffuse = { 1.0f, 0.0f, 0.0f };
-		m_light->specular = { 1.0f, 1.f, 1.0f };
+		m_light->specular = { 1.0f, 0.f, 0.0f };
 		m_lightBox.material.diffuse = { 1.f, 0.f, 0.f };
 
 	}
@@ -595,7 +595,7 @@ void PmxModelScene::render()
 	m_VS->projection = PERSPECTIVEMAT;
 	m_VS->view = camera.matrix;
 	m_VS->vp = m_VS->projection * m_VS->view;
-	m_PS->light = onlyDrawPmxModel ? nullptr : m_light;
+	m_PS->light = m_useLight ? m_light : nullptr;
 
 	int vertexSize = m_character[0].vertices.size();
 	std::vector<Fragment> buff;
@@ -612,7 +612,7 @@ void PmxModelScene::render()
 	}
 	
 	
-	if (onlyDrawPmxModel)
+	if (!m_useLight)
 	{
 		RenderContext::resolve();
 		return;
@@ -660,14 +660,14 @@ OceanWaveScene::OceanWaveScene() :
 	m_PS->light = m_light;;
 
 	camera.useSphereMode = true;
-	camera.pitch = 45.f;
+	camera.pitch = 25.f;
 	camera.yaw = -90.f;
 	camera.radius = 100;
 	camera.target = { 0.f, 0.f, 0.f };
 
 	nearPlane = 0.1f;
 	farPlane = 1000.f;
-	fov = 60.f;
+	fov = 80.f;
 }
 
 OceanWaveScene::~OceanWaveScene()

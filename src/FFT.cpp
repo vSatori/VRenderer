@@ -61,12 +61,13 @@ Complex FFT::t(unsigned int x, unsigned int N)
 {
 	return Complex(cosf(PI * 2.f * x / N), sinf(PI * 2.f * x / N));
 }
-
+#include <iostream>
 void FFT::execute(Complex* in, Complex* out, int stride, int offset)
 {
 	for (int i = 0; i < m_N; ++i)
 	{
-		m_c[i] = in[m_reversed[i] * stride + offset];
+		int index = m_reversed[i] * stride + offset;
+		m_c[i] = in[index];
 	}
 	int w = 0;
 	for (int i = 2; i <= m_N; i *= 2)
@@ -76,6 +77,8 @@ void FFT::execute(Complex* in, Complex* out, int stride, int offset)
 		{
 			for (int j = 0; j < m; ++j)
 			{
+				auto real = m_c[j + m].real;
+				
 				Complex tw = m_t[w][j] * p[j + m];
 				p[j + m] = p[j] - tw;
 				p[j] += tw;
