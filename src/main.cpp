@@ -23,10 +23,7 @@ int main(int argc, char** argv)
 	g_resourcePath = getResouecePath(ins);
 	RenderContext::init();
 	renderer->init(ins);
-	//PmxModelScene scene(g_resourcePath + "keqing/Keqing_original_SFW.pmx", true);
-	//ShadowMappingScene scene;
-	//DynamicEnviromentMappingScene scene;
-	OceanWaveScene scene;
+	ShadowMappingScene scene;
 	renderer->setScene(&scene);
 	int res = renderer->run();
 	RenderContext::finalize();
